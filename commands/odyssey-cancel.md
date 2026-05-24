@@ -3,7 +3,10 @@ description: "Cancel active Odyssey mission and stop the loop"
 allowed-tools:
   - "Bash(test -f .claude/odyssey.local.md:*)"
   - "Bash(rm .claude/odyssey.local.md)"
+  - "Bash(cat .claude/odyssey.local.md:*)"
+  - "Bash(python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py summary:*)"
   - "Read"
+  - "Edit"
 ---
 
 # /odyssey-cancel — Cancel Mission

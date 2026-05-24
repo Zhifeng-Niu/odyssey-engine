@@ -2,6 +2,9 @@
 description: "Show current Odyssey mission status and progress"
 allowed-tools:
   - "Bash(python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py summary:*)"
+  - "Bash(cat .claude/odyssey.local.md:*)"
+  - "Bash(git log:*)"
+  - "Bash(git diff:*)"
   - "Read"
 ---
 

@@ -2,3 +2,4 @@ iteration	status	checks	description
 1	keep	all_pass	stop-hook actionable continuation prompt + auto-inactive on max-iter/time-budget
 2	keep	all_pass	SKILL.md re-entry procedure for stop hook continuation
 3	keep	all_pass	setup adds completed_at, stop-hook get_fm_value handles missing fields
+4	keep	all_pass	add sync-cache.sh rsync script, sync all changes to CC cache

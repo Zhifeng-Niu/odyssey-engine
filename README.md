@@ -146,14 +146,21 @@ odyssey-engine/
 | `/odyssey-status` | Show progress |
 | `/odyssey-cancel` | Stop mission |
 
-## Origin
+## Acknowledgments
 
-Built from three systems:
-- **autoresearch** (karpathy) — metric-driven experimentation, JSONL tracking
-- **gaggle-iterate** — checkpoint/verify/rollback loop
-- **ralph-loop** — stop-hook-based continuous execution
+This project would not exist without two key inspirations:
 
-Named for the Odyssey — every mission is a journey with giants to face, each requiring a different strategy.
+- **[autoresearch](https://github.com/karpathy/autoresearch)** by [Andrej Karpathy](https://github.com/karpathy) — the core insight that AI agents can autonomously conduct experiments with metric-driven evaluation, JSONL tracking, and git-based checkpoint/rollback. Odyssey's MISSION.md, verification pipeline, and experiment log all descend directly from autoresearch's `program.md`, benchmarking, and `results.tsv` patterns.
+
+- **[ralph-loop](https://claude.com/plugins/ralph-loop)** — the continuous execution primitive via stop hooks that makes autonomous iteration actually reliable. Instead of trusting the agent to "not stop", ralph-loop's exit code 2 mechanism physically prevents premature exit. Odyssey's entire execution layer is built on this idea.
+
+Additional thanks:
+- **gaggle-iterate** — the checkpoint → experiment → verify → keep/discard decision loop that shaped Odyssey's waypoint procedure.
+
+---
+
+> Named for the Odyssey — every mission is a journey with giants to face, each requiring a different strategy.
+> And for Goliath — sometimes the smallest stone, thrown with precision, is all you need.
 
 ## License
 

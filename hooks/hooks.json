@@ -1,10 +1,15 @@
 {
+  "description": "Odyssey Engine stop hook for autonomous iteration loops",
   "hooks": {
     "Stop": [
       {
-        "type": "command",
-        "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/stop-hook.sh",
-        "timeout": 30
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh\"",
+            "timeout": 30
+          }
+        ]
       }
     ]
   }

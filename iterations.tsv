@@ -5,3 +5,4 @@ iteration	status	checks	description
 4	keep	all_pass	add sync-cache.sh rsync script, sync all changes to CC cache
 5	keep	all_pass	expand command allowed-tools for git ops and state file access
 6	keep	all_pass	expand cancel/status command allowed-tools
+7	keep	all_pass	fix CJK branch slug generation with hash fallback

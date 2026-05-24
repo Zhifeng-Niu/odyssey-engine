@@ -62,7 +62,16 @@ allowed-tools:
 1. Check for `.claude/odyssey.local.md` — if it exists, a mission is active
 2. Read `MISSION.md` for full context
 3. Read `odyssey.jsonl` for experiment history
-4. Continue the loop from the last waypoint
+4. Continue the loop from the last waypoint by following the Re-Entry Procedure in SKILL.md
+
+### Stop Hook Re-Entry
+
+When the stop hook blocks exit and CC continues, it receives a `systemMessage` with:
+- Current waypoint number and orientation
+- 8-step execution instructions (checkpoint → read → pick → act → verify → decide → record → recap)
+- Mission context from MISSION.md
+
+Follow those instructions exactly. Do NOT ask for permission. Do NOT stop between waypoints.
 
 ### After Each Waypoint
 

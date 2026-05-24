@@ -159,8 +159,8 @@ Additional thanks:
 
 ---
 
-> Named for the Odyssey — every mission is a journey with giants to face, each requiring a different strategy.
-> And for Goliath — sometimes the smallest stone, thrown with precision, is all you need.
+> The Odyssey is the story — a long journey home, encountering giants at every turn, each demanding a different strategy.
+> Goliath is embedded within it: a reminder that the smallest stone, thrown with precision at the right moment, can bring down what seemed invincible.
 
 ## License
 

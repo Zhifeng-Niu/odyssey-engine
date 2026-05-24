@@ -1,0 +1,13 @@
+{
+  "name": "odyssey-engine",
+  "version": "1.0.0",
+  "description": "Autonomous iteration engine with three orientations (engineer/creative/production). Fuses autoresearch metric-driven loops, gaggle checkpoint/verify/rollback, and ralph-loop continuous execution.",
+  "author": "stbz",
+  "license": "MIT",
+  "skills": ["./skills/"],
+  "commands": ["./commands/"],
+  "agents": [
+    "./agents/odyssey-explorer.md",
+    "./agents/odyssey-critic.md"
+  ]
+}

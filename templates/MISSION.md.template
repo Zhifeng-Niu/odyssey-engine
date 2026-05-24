@@ -1,0 +1,61 @@
+---
+orientation: [engineer]
+status: active
+started_at: YYYY-MM-DD
+expedition_branch: null
+baseline_metric: null
+best_metric: null
+total_waypoints: 0
+consecutive_discards: 0
+---
+
+# Mission: {TITLE}
+
+## Goal
+{One sentence. The compass bearing.}
+
+## Context
+{Why this matters. Current state. Background the agent needs.}
+
+## Scope
+
+### Modifiable
+- `path/to/file1` -- description
+
+### Read-Only (PROTECTED)
+- `path/to/config` -- reason
+
+## Metrics
+
+| Name | Unit | Measure Command | Direction |
+|------|------|----------------|-----------|
+| {name} | {unit} | `{command}` | lower/higher |
+
+## Guard
+```bash
+{command that must exit 0}
+```
+
+## Termination
+- {Specific condition}
+- OR max {N} waypoints
+- OR user interrupt
+
+## What's Been Tried
+
+### Wins
+{Auto-updated by engine.}
+
+### Dead Ends
+{Auto-updated by engine.}
+
+### Surprises
+{Unexpected findings. Auto-updated in creative mode.}
+
+## Current Best
+- {metric_name}: {value} (Run #{N})
+- Baseline: {value}
+- Improvement: {+/-X%}
+
+## Ideas Backlog
+{Auto-populated. Can be manually edited.}

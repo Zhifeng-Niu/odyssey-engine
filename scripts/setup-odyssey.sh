@@ -145,7 +145,13 @@ echo "Created MISSION.md"
 # ── Create Expedition Branch ──
 
 if [[ -d ".git" ]]; then
-  slug=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/-$//')
+  # Generate slug: transliterate to ASCII, lowercase, replace non-alphanum with dash
+  slug=$(echo "$PROMPT" | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/^-*//;s/-*$//')
+  # Fallback: if slug is too short (non-latin input), use first meaningful words + hash
+  if [[ ${#slug} -lt 4 ]]; then
+    short_hash=$(echo "$PROMPT" | shasum | head -c 6)
+    slug="mission-${short_hash}"
+  fi
   branch_name="odyssey/${slug}-$(date +%Y%m%d)"
   git checkout -b "$branch_name" 2>/dev/null || true
   # Update MISSION.md frontmatter with branch name

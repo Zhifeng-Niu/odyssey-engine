@@ -181,6 +181,7 @@ time_budget_seconds: ${time_seconds}
 completion_promise: "${COMPLETION_PROMISE}"
 orientation: ${ORIENTATION}
 started_at: ${now}
+completed_at: ""
 mission_file: MISSION.md
 consecutive_discards: 0
 ---

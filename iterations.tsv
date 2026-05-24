@@ -1,2 +1,3 @@
 iteration	status	checks	description
 1	keep	all_pass	stop-hook actionable continuation prompt + auto-inactive on max-iter/time-budget
+2	keep	all_pass	SKILL.md re-entry procedure for stop hook continuation

@@ -13,7 +13,7 @@ fi
 
 # Parse frontmatter values
 get_fm_value() {
-  grep "^$1:" "$STATE_FILE" | head -1 | sed "s/^$1: *//" | tr -d '"' | tr -d "'"
+  grep "^$1:" "$STATE_FILE" 2>/dev/null | head -1 | sed "s/^$1: *//" | tr -d '"' | tr -d "'" || true
 }
 
 active=$(get_fm_value "active")

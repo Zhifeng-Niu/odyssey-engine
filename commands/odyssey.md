@@ -3,11 +3,18 @@ description: "Start or resume an Odyssey Engine autonomous iteration mission"
 allowed-tools:
   - "Bash(bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh:*)"
   - "Bash(python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py:*)"
+  - "Bash(bash $CLAUDE_PLUGIN_ROOT/scripts/sync-cache.sh:*)"
   - "Bash(git checkout:*)"
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
   - "Bash(git reset:*)"
   - "Bash(git checkout -b:*)"
+  - "Bash(git log:*)"
+  - "Bash(git diff:*)"
+  - "Bash(git status:*)"
+  - "Bash(git branch:*)"
+  - "Bash(cat .claude/odyssey.local.md:*)"
+  - "Bash(test -f .claude/odyssey.local.md:*)"
   - "Read"
   - "Write"
   - "Edit"
@@ -55,7 +62,16 @@ allowed-tools:
 1. Check for `.claude/odyssey.local.md` — if it exists, a mission is active
 2. Read `MISSION.md` for full context
 3. Read `odyssey.jsonl` for experiment history
-4. Continue the loop from the last waypoint
+4. Continue the loop from the last waypoint by following the Re-Entry Procedure in SKILL.md
+
+### Stop Hook Re-Entry
+
+When the stop hook blocks exit and CC continues, it receives a `systemMessage` with:
+- Current waypoint number and orientation
+- 8-step execution instructions (checkpoint → read → pick → act → verify → decide → record → recap)
+- Mission context from MISSION.md
+
+Follow those instructions exactly. Do NOT ask for permission. Do NOT stop between waypoints.
 
 ### After Each Waypoint
 

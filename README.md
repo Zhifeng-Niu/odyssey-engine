@@ -163,16 +163,17 @@ odyssey-engine/
 | `/odyssey-status` | Show progress |
 | `/odyssey-cancel` | Stop mission |
 
-## Acknowledgments
+## Why Odyssey Exists
 
-This project would not exist without two key inspirations:
+Odyssey was born from a specific frustration: two tools that each did half the job.
 
-- **[autoresearch](https://github.com/karpathy/autoresearch)** by [Andrej Karpathy](https://github.com/karpathy) — the core insight that AI agents can autonomously conduct experiments with metric-driven evaluation, JSONL tracking, and git-based checkpoint/rollback. Odyssey's MISSION.md, verification pipeline, and experiment log all descend directly from autoresearch's `program.md`, benchmarking, and `results.tsv` patterns.
+**gaggle-iterate** (a personal adaptation of [autoresearch](https://github.com/karpathy/autoresearch) by [Andrej Karpathy](https://github.com/karpathy)) had excellent per-iteration recap and decision-making — checkpoint → experiment → verify → keep/discard. The recap mechanism meant each iteration genuinely learned from the last. But it couldn't loop. Every run was manual. No continuity.
 
-- **[ralph-loop](https://claude.com/plugins/ralph-loop)** — the continuous execution primitive via stop hooks that makes autonomous iteration actually reliable. Instead of trusting the agent to "not stop", ralph-loop's exit code 2 mechanism physically prevents premature exit. Odyssey's entire execution layer is built on this idea.
+**[ralph-loop](https://claude.com/plugins/ralph-loop)** could run forever — the stop hook made continuous execution reliable and effortless. But each iteration replayed the same static prompt. The loop never evolved. No recap, no learning, no experiment tracking.
 
-Additional thanks:
-- **gaggle-iterate** — the checkpoint → experiment → verify → keep/discard decision loop that shaped Odyssey's waypoint procedure.
+**Odyssey** fuses both: the evolving intelligence of gaggle-iterate's recap-driven iteration with ralph-loop's unstoppable execution engine. Each waypoint learns from the last. The mission state is a living document, not a replayed prompt. The loop runs until the job is done.
+
+From **autoresearch** specifically: metric-driven evaluation, JSONL experiment tracking, `program.md`-style task definition, and git-based checkpoint/rollback — the DNA of the scientific method applied to autonomous agents.
 
 ---
 

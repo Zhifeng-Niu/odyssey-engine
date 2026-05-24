@@ -130,6 +130,24 @@ See [verification-patterns.md](references/verification-patterns.md) for details.
 | `odyssey.ideas.md` | Hypothesis backlog | Agent + user |
 | `.claude/odyssey.local.md` | Stop hook state | setup + stop-hook.sh |
 
+## Re-Entry Procedure (after Stop Hook)
+
+When the stop hook fires and CC continues, follow this exact sequence:
+
+1. Read `.claude/odyssey.local.md` to get current waypoint number and orientation
+2. Read `MISSION.md` — scan "What's Been Tried" to avoid repeating failures
+3. Pick ONE hypothesis from Ideas Backlog (or generate a new one based on orientation)
+4. **Checkpoint**: `git add -A && git commit -m "waypoint-{N}: checkpoint"`
+5. **Act**: Implement the single focused change
+6. **Verify**: Run syntax check → guard command → collect metric
+7. **Decide**:
+   - KEEP: commit, log to `odyssey.jsonl`, update MISSION.md Wins, reset consecutive_discards
+   - DISCARD: `git reset --hard HEAD~1`, log to `odyssey.jsonl`, update MISSION.md Dead Ends, increment consecutive_discards
+8. **Record**: Update state files, commit
+9. **One-line recap**, then immediately continue (stop hook handles the loop)
+
+Do NOT stop. Do NOT ask for permission. The stop hook will re-fire after each waypoint.
+
 ## Commands
 
 | Command | Purpose |

@@ -1,1 +1,2 @@
 iteration	status	checks	description
+1	keep	all_pass	stop-hook actionable continuation prompt + auto-inactive on max-iter/time-budget

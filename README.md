@@ -1,18 +1,27 @@
 # Odyssey Engine
 
-Autonomous iteration engine for Claude Code. Three orientations, one loop.
+Universal autonomous iteration engine. For any task that benefits from structured experimentation — code, research, writing, design, data analysis, and beyond.
 
 **Fuses**: autoresearch (metric-driven experiments) + gaggle-iterate (checkpoint/verify/rollback) + ralph-loop (continuous execution).
 
 ## What It Does
 
-Odyssey Engine runs autonomous iteration loops that adapt strategy to the task:
+Odyssey Engine runs autonomous iteration loops that adapt strategy to the task at hand — not just code, but anything you can measure and iterate on:
 
 | Orientation | Best For | Strategy |
 |-------------|----------|----------|
-| **engineer** | CI/CD, auth modules, infrastructure | Conservative, atomic commits, guard-first |
-| **creative** | Architecture exploration, breakthroughs | Divergent, force diversity, surprise detection |
-| **production** | Performance optimization, deployment prep | Progressive, minimal changes, ship-ready every step |
+| **engineer** | Systems, infrastructure, pipelines, scaffolding | Conservative, atomic steps, guard-first |
+| **creative** | Research, exploration, breakthroughs, design | Divergent, force diversity, surprise detection |
+| **production** | Optimization, hardening, deployment preparation | Progressive, minimal changes, ship-ready every step |
+
+### Not Just Code
+
+Odyssey handles any iterative task:
+- **Research**: iterate on hypotheses, track evidence, converge on insight
+- **Writing**: draft → critique → refine, measure clarity or engagement
+- **Design**: explore variations, A/B compare, evolve toward a target
+- **Data analysis**: try models, compare accuracy, log what worked
+- **Code**: build, test, optimize, harden — the full engineering cycle
 
 ## Install
 
@@ -27,8 +36,16 @@ git clone https://github.com/Zhifeng-Niu/odyssey-engine.git ~/.claude/plugins/od
 ## Quick Start
 
 ```
+# Code optimization
 /odyssey "Reduce API latency below 200ms" --orientation production --max-iterations 20
-/odyssey "Find unconventional layout approaches" --orientation creative --max-iterations 10
+
+# Research exploration
+/odyssey "Find the most promising architecture for event processing" --orientation creative
+
+# Writing refinement
+/odyssey "Improve this essay's readability score to grade 8 level" --orientation engineer
+
+# Resume
 /odyssey --resume
 ```
 

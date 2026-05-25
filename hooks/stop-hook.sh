@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Odyssey Engine Stop Hook
-# Prevents the agent from exiting mid-mission. Forked from ralph-loop with
-# additions: time budget, consecutive discard tracking, orientation awareness.
+# Prevents the agent from exiting mid-mission. Runs until:
+# - Convergence detected (agent says task is done in systemMessage)
+# - Stuck (10 consecutive discards)
+# - Time budget exceeded (optional)
+# - Completion promise fulfilled (optional)
+# - User runs /odyssey-cancel
+# No iteration limit — like ralph-loop, it runs until the work is done.
 set -euo pipefail
 
 STATE_FILE=".claude/odyssey.local.md"
@@ -22,7 +27,6 @@ if [[ "$active" != "true" ]]; then
 fi
 
 iteration=$(get_fm_value "iteration" || echo "0")
-max_iterations=$(get_fm_value "max_iterations" || echo "0")
 session_id=$(get_fm_value "session_id")
 completion_promise=$(get_fm_value "completion_promise")
 orientation=$(get_fm_value "orientation" || echo "engineer")
@@ -33,12 +37,11 @@ mission_file=$(get_fm_value "mission_file" || echo "MISSION.md")
 
 # Validate numeric fields
 iteration=${iteration:-0}
-max_iterations=${max_iterations:-0}
 consecutive_discards=${consecutive_discards:-0}
 
-# Check max iterations
-if [[ "$max_iterations" -gt 0 ]] && [[ "$iteration" -ge "$max_iterations" ]]; then
-  # Mark as inactive
+# Helper: deactivate mission and allow exit
+deactivate() {
+  local reason="$1"
   if [[ "$(uname)" == "Darwin" ]]; then
     sed -i '' 's/^active:.*/active: false/' "$STATE_FILE"
     sed -i '' 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
@@ -46,26 +49,18 @@ if [[ "$max_iterations" -gt 0 ]] && [[ "$iteration" -ge "$max_iterations" ]]; th
     sed -i 's/^active:.*/active: false/' "$STATE_FILE"
     sed -i 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
   fi
-  echo '{"decision":"allow","reason":"max iterations reached ('"$iteration"'/'"$max_iterations"')"}'
+  echo '{"decision":"allow","reason":"'"$reason"'"}'
   exit 0
-fi
+}
 
-# Check time budget
+# Check time budget (optional)
 if [[ "$time_budget_seconds" -gt 0 ]] && [[ -n "$started_at" ]]; then
   started_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$started_at" "+%s" 2>/dev/null || date -d "$started_at" "+%s" 2>/dev/null || echo "0")
   if [[ "$started_epoch" -gt 0 ]]; then
     now_epoch=$(date "+%s")
     elapsed=$((now_epoch - started_epoch))
     if [[ "$elapsed" -ge "$time_budget_seconds" ]]; then
-      if [[ "$(uname)" == "Darwin" ]]; then
-        sed -i '' 's/^active:.*/active: false/' "$STATE_FILE"
-        sed -i '' 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
-      else
-        sed -i 's/^active:.*/active: false/' "$STATE_FILE"
-        sed -i 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
-      fi
-      echo '{"decision":"allow","reason":"time budget exceeded ('"$elapsed"'s/'"$time_budget_seconds"'s)"}'
-      exit 0
+      deactivate "time budget exceeded (${elapsed}s/${time_budget_seconds}s)"
     fi
   fi
 fi
@@ -77,22 +72,22 @@ if [[ -n "$completion_promise" ]]; then
     stdin_data=$(cat)
   fi
   if echo "$stdin_data" | grep -q "<promise>${completion_promise}<\/promise>"; then
-    if [[ "$(uname)" == "Darwin" ]]; then
-      sed -i '' 's/^active:.*/active: false/' "$STATE_FILE"
-      sed -i '' 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
-    else
-      sed -i 's/^active:.*/active: false/' "$STATE_FILE"
-      sed -i 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
-    fi
-    echo '{"decision":"allow","reason":"completion promise fulfilled"}'
-    exit 0
+    deactivate "completion promise fulfilled"
+  fi
+fi
+
+# Check convergence in stdin (agent self-reports task is done)
+if [[ ! -t 0 ]]; then
+  stdin_data="${stdin_data:-$(cat)}"
+  if echo "$stdin_data" | grep -q "<converged/>"; then
+    deactivate "converged: agent self-reported task complete"
   fi
 fi
 
 # Check stuck (10 consecutive discards)
 if [[ "$consecutive_discards" -ge 10 ]]; then
   cat <<EOF
-{"decision":"block","reason":"stuck: 10 consecutive discards","systemMessage":"ODYSSEY STUCK: 10 consecutive waypoints discarded. No progress. Options:\n1. Switch orientation — output: /odyssey --orientation creative\n2. Broaden scope — edit MISSION.md Goals section\n3. Cancel — output: /odyssey-cancel\n4. Force exit — output: <promise>STUCK</promise>\n\nWhat would you like to do?"}
+{"decision":"block","reason":"stuck: 10 consecutive discards","systemMessage":"ODYSSEY STUCK: 10 consecutive waypoints discarded. No progress. Options:\n1. Switch orientation — output: /odyssey --orientation creative\n2. Broaden scope — edit MISSION.md Goals section\n3. Cancel — output: /odyssey-cancel\n4. Force exit — output: <converged/>\n\nWhat would you like to do?"}
 EOF
   exit 2
 fi
@@ -111,9 +106,9 @@ if [[ -f "$mission_file" ]]; then
   mission_context=$(head -80 "$mission_file")
 fi
 
-# Build actionable continuation prompt
+# Build actionable continuation prompt with convergence awareness
 cat <<EOF
-{"decision":"block","reason":"odyssey waypoint ${new_iteration}","systemMessage":"ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | discards: ${consecutive_discards}\n\nExecute the next waypoint NOW. Follow these steps in order:\n\n1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"\n2. Read MISSION.md section \"What's Been Tried\" to avoid repeating\n3. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)\n4. Implement the change (one focused idea)\n5. Run verification: syntax check, then guard command, then metric\n6. DECIDE:\n   - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins\n   - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends\n7. Update .claude/odyssey.local.md consecutive_discards counter\n8. Output a ONE LINE recap, then continue to next waypoint\n\nDo NOT stop. Do NOT ask for permission. Do NOT wait for user input.\n\n---\nMISSION CONTEXT:\n${mission_context}"}
+{"decision":"block","reason":"odyssey waypoint ${new_iteration}","systemMessage":"ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | discards: ${consecutive_discards}\n\nExecute the next waypoint NOW. Follow these steps in order:\n\n1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"\n2. Read MISSION.md section \"What's Been Tried\" to avoid repeating\n3. CONVERGENCE CHECK: if the last 3+ waypoints show diminishing returns and the backlog is exhausted, output <converged/> to stop the loop. Otherwise continue.\n4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)\n5. Implement the change (one focused idea)\n6. Run verification: syntax check, then guard command, then metric\n7. DECIDE:\n   - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins\n   - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends\n8. Update .claude/odyssey.local.md consecutive_discards counter\n9. Output a ONE LINE recap, then continue to next waypoint\n\nDo NOT stop. Do NOT ask for permission. Do NOT wait for user input.\n\nWhen you judge the task is complete (no more meaningful improvements possible), output <converged/> on a line by itself.\n\n---\nMISSION CONTEXT:\n${mission_context}"}
 EOF
 
 exit 2

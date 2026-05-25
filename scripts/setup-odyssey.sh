@@ -11,7 +11,7 @@ STATE_FILE=".claude/odyssey.local.md"
 
 PROMPT=""
 ORIENTATION="engineer"
-MAX_ITERATIONS=0
+MAX_ITERATIONS=0  # 0 = unlimited, like ralph-loop
 TIME_BUDGET=""
 COMPLETION_PROMISE=""
 MISSION_FILE=""
@@ -116,9 +116,10 @@ ${guard_cmd:-echo "no guard defined"}
 \`\`\`
 
 ## Termination
-- All checks pass AND metric improved
-- OR max 50 waypoints
-- OR user interrupt
+- Task complete (all checks pass AND metric improved)
+- OR stuck (10 consecutive discards)
+- OR user interrupt (/odyssey-cancel)
+- No iteration limit — runs until done
 
 ## What's Been Tried
 
@@ -142,16 +143,15 @@ fi
 
 echo "Created MISSION.md"
 
-# ── Create Expedition Branch ──
+# ── Generate Slug (always available) ──
+
+# Try ASCII-only slug first; if empty (e.g. CJK-only prompt), fall back to "mission"
+slug=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/^-*//;s/-*$//')
+slug=${slug:-mission}
+
+# ── Create Expedition Branch (git only) ──
 
 if [[ -d ".git" ]]; then
-  # Generate slug: transliterate to ASCII, lowercase, replace non-alphanum with dash
-  slug=$(echo "$PROMPT" | iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/^-*//;s/-*$//')
-  # Fallback: if slug is too short (non-latin input), use first meaningful words + hash
-  if [[ ${#slug} -lt 4 ]]; then
-    short_hash=$(echo "$PROMPT" | shasum | head -c 6)
-    slug="mission-${short_hash}"
-  fi
   branch_name="odyssey/${slug}-$(date +%Y%m%d)"
   git checkout -b "$branch_name" 2>/dev/null || true
   # Update MISSION.md frontmatter with branch name
@@ -161,6 +161,8 @@ if [[ -d ".git" ]]; then
     sed -i "s/^expedition_branch:.*/expedition_branch: ${branch_name}/" "MISSION.md"
   fi
   echo "Created expedition branch: $branch_name"
+else
+  echo "Skipping branch creation (not a git repo)."
 fi
 
 # ── Initialize JSONL ──
@@ -187,7 +189,6 @@ time_budget_seconds: ${time_seconds}
 completion_promise: "${COMPLETION_PROMISE}"
 orientation: ${ORIENTATION}
 started_at: ${now}
-completed_at: ""
 mission_file: MISSION.md
 consecutive_discards: 0
 ---
@@ -221,7 +222,7 @@ cat <<SUMMARY
   Orientation:  ${ORIENTATION}
   Project:      ${project_type}
   Branch:       ${branch_name:-N/A}
-  Max runs:     ${MAX_ITERATIONS:-unlimited}
+  Max runs:     unlimited (until done or /odyssey-cancel)
   Time budget:  ${TIME_BUDGET:-none}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

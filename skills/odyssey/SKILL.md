@@ -79,9 +79,13 @@ LOOP:
   # DO NOT stop, DO NOT ask for permission
 
   # 8. STOP CONDITIONS (only these stop the loop)
-  ## Stop hook handles: max-iterations, time-budget, completion-promise
+  ## Convergence: engine auto-detects when improvements plateau
+  ##   - Last 5 waypoints show diminishing returns (metric delta < threshold)
+  ##   - Agent has exhausted Ideas Backlog with no new hypotheses
+  ##   - Self-assessment: "further iterations unlikely to produce meaningful change"
   ## Stuck detection: 10 consecutive discards → pause for direction
   ## User interrupt: /odyssey-cancel
+  ## NO iteration limit — runs until converged or interrupted
 ```
 
 ## Orientation Strategies
@@ -152,7 +156,7 @@ Do NOT stop. Do NOT ask for permission. The stop hook will re-fire after each wa
 
 | Command | Purpose |
 |---------|---------|
-| `/odyssey "goal" [--orientation] [--max-iterations N]` | Start a new mission |
+| `/odyssey "goal" [--orientation] [--time-budget 30m]` | Start a new mission (runs until converged) |
 | `/odyssey --resume` | Resume existing mission |
 | `/odyssey-status` | Show current progress |
 | `/odyssey-cancel` | Stop active mission |

@@ -36,14 +36,17 @@ git clone https://github.com/Zhifeng-Niu/odyssey-engine.git ~/.claude/plugins/od
 ## Quick Start
 
 ```
-# Code optimization
-/odyssey "Reduce API latency below 200ms" --orientation production --max-iterations 20
+# Code optimization — runs until converged
+/odyssey "Reduce API latency below 200ms" --orientation production
 
 # Research exploration
 /odyssey "Find the most promising architecture for event processing" --orientation creative
 
 # Writing refinement
 /odyssey "Improve this essay's readability score to grade 8 level" --orientation engineer
+
+# With time budget (optional)
+/odyssey "Refactor the auth module" --orientation production --time-budget 30m
 
 # Resume
 /odyssey --resume
@@ -65,6 +68,17 @@ WAYPOINT += 1
 7. CONTINUE    — stop hook prevents exit, loop continues
 ```
 
+### Convergence
+
+Odyssey runs until the task is done — no fixed iteration limit. The agent self-detects when improvements plateau:
+
+- **Convergence signal**: when the last 3+ waypoints show diminishing returns and the idea backlog is exhausted, the agent outputs `<converged/>` to stop
+- **Stuck detection**: 10 consecutive discards pauses the loop for direction
+- **User interrupt**: `/odyssey-cancel` at any time
+- **Time budget**: optional `--time-budget` hard cap
+
+Like ralph-loop, it trusts the executing agent to know when the work is finished.
+
 ### MISSION.md
 
 Tasks are defined in a living document that the engine reads and updates:
@@ -85,7 +99,8 @@ pytest --tb=short -q
 
 ## Termination
 - p99_ms < 200 AND all tests pass
-- OR max 50 waypoints
+- OR convergence detected
+- OR user interrupt
 ```
 
 ### Verification Pipeline
@@ -128,7 +143,7 @@ odyssey-engine/
 ├── commands/                # /odyssey, /odyssey-status, /odyssey-cancel
 ├── agents/                  # odyssey-explorer, odyssey-critic
 ├── hooks/
-│   └── stop-hook.sh         # Continuous execution engine
+│   └── stop-hook.sh         # Continuous execution + convergence detection
 ├── scripts/
 │   ├── setup-odyssey.sh     # Mission initialization
 │   └── odyssey_helper.py    # JSONL management + project detection
@@ -149,16 +164,17 @@ odyssey-engine/
 
 - Git checkpoint before every change — `git reset --hard` on failure
 - Stop hook prevents premature exit
-- `--max-iterations` hard cap
-- `--time-budget` optional limit
+- Convergence detection — agent self-stops when improvements plateau
+- `--time-budget` optional hard limit
 - 10 consecutive discards → pause for direction
+- `<converged/>` signal for clean exit
 - Protected files (read-only scope) auto-reverted if modified
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/odyssey "goal" [options]` | Start a new mission |
+| `/odyssey "goal" [options]` | Start a new mission (runs until converged) |
 | `/odyssey --resume` | Resume existing mission |
 | `/odyssey-status` | Show progress |
 | `/odyssey-cancel` | Stop mission |

@@ -143,11 +143,15 @@ fi
 
 echo "Created MISSION.md"
 
-# ── Generate Slug (always available) ──
+# ── Generate Slug ──
 
-# Try ASCII-only slug first; if empty (e.g. CJK-only prompt), fall back to "mission"
-slug=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/^-*//;s/-*$//')
-slug=${slug:-mission}
+# For ASCII prompts: use readable slug. For non-ASCII (CJK etc): hash-based.
+ascii_slug=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/^-*//;s/-*$//')
+if [[ ${#ascii_slug} -ge 4 ]]; then
+  slug="$ascii_slug"
+else
+  slug="mission-$(echo "$PROMPT" | shasum | head -c 8)"
+fi
 
 # ── Create Expedition Branch (git only) ──
 

@@ -143,20 +143,10 @@ fi
 
 echo "Created MISSION.md"
 
-# ── Generate Slug ──
-
-# For ASCII prompts: use readable slug. For non-ASCII (CJK etc): hash-based.
-ascii_slug=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cs 'a-z0-9-' '-' | head -c 40 | sed 's/^-*//;s/-*$//')
-if [[ ${#ascii_slug} -ge 4 ]]; then
-  slug="$ascii_slug"
-else
-  slug="mission-$(echo "$PROMPT" | shasum | head -c 8)"
-fi
-
 # ── Create Expedition Branch (git only) ──
 
+branch_name="odyssey/$(date +%Y%m%d-%H%M%S)"
 if [[ -d ".git" ]]; then
-  branch_name="odyssey/${slug}-$(date +%Y%m%d)"
   git checkout -b "$branch_name" 2>/dev/null || true
   # Update MISSION.md frontmatter with branch name
   if [[ "$(uname)" == "Darwin" ]]; then
@@ -173,7 +163,7 @@ fi
 
 python3 "$HELPER" init \
   --jsonl "odyssey.jsonl" \
-  --name "$slug" \
+  --name "${branch_name#odyssey/}" \
   --direction "lower" \
   --orientation "$ORIENTATION"
 

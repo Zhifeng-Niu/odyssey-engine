@@ -150,9 +150,9 @@ if [[ -d ".git" ]]; then
   git checkout -b "$branch_name" 2>/dev/null || true
   # Update MISSION.md frontmatter with branch name
   if [[ "$(uname)" == "Darwin" ]]; then
-    sed -i '' "s/^expedition_branch:.*/expedition_branch: ${branch_name}/" "MISSION.md"
+    sed -i '' "s|^expedition_branch:.*|expedition_branch: ${branch_name}|" "MISSION.md"
   else
-    sed -i "s/^expedition_branch:.*/expedition_branch: ${branch_name}/" "MISSION.md"
+    sed -i "s|^expedition_branch:.*|expedition_branch: ${branch_name}|" "MISSION.md"
   fi
   echo "Created expedition branch: $branch_name"
 else

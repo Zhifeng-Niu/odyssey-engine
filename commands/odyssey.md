@@ -27,10 +27,12 @@ allowed-tools:
 ## Arguments
 
 ```
-/odyssey PROMPT [--orientation engineer|creative|production] [--max-iterations N] [--time-budget 30m|2h] [--completion-promise TEXT]
+/odyssey PROMPT [--orientation engineer|creative|production] [--time-budget 30m|2h] [--completion-promise TEXT]
 /odyssey --resume
 /odyssey --mission-file PATH
 ```
+
+Do NOT pass --max-iterations. The loop runs until convergence is detected (diminishing returns across waypoints) or the user interrupts with /odyssey-cancel.
 
 ## Behavior
 
@@ -38,8 +40,9 @@ allowed-tools:
 
 1. Run the setup script to initialize:
    ```bash
-   bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh "PROMPT" --orientation ORIENTATION --max-iterations N
+   bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh "PROMPT" --orientation ORIENTATION
    ```
+   Do NOT add --max-iterations. The loop stops by convergence detection, not a fixed count.
 
 2. The setup script will:
    - Auto-detect project type
@@ -52,9 +55,10 @@ allowed-tools:
 3. After setup, begin the Odyssey loop following the SKILL.md loop procedure.
 
 4. The stop hook will keep the loop running until:
+   - Convergence detected (diminishing returns, exhausted backlog, agent self-assesses no further meaningful improvement)
    - Completion promise is fulfilled
-   - Max iterations reached
    - Time budget exceeded
+   - Stuck (10 consecutive discards)
    - User runs `/odyssey-cancel`
 
 ### Resume Mission

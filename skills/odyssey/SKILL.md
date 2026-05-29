@@ -27,10 +27,12 @@ A universal autonomous iteration engine that adapts its strategy to the task. Th
 ## Quick Start
 
 ```
-/odyssey "Reduce API latency below 200ms" --orientation production --max-iterations 20
+/odyssey "Reduce API latency below 200ms" --orientation production
 /odyssey "Find unconventional layout approaches" --orientation creative
 /odyssey --resume
 ```
+
+No --max-iterations. The loop runs until convergence (auto-detected) or user interrupt (/odyssey-cancel).
 
 ## The Loop
 
@@ -156,7 +158,7 @@ Do NOT stop. Do NOT ask for permission. The stop hook will re-fire after each wa
 
 | Command | Purpose |
 |---------|---------|
-| `/odyssey "goal" [--orientation] [--time-budget 30m]` | Start a new mission (runs until converged) |
+| `/odyssey "goal" [--orientation] [--time-budget 30m]` | Start a new mission (runs until convergence detected or /odyssey-cancel) |
 | `/odyssey --resume` | Resume existing mission |
 | `/odyssey-status` | Show current progress |
 | `/odyssey-cancel` | Stop active mission |

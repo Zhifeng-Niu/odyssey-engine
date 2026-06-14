@@ -91,6 +91,12 @@ echo "Delivery tier: $delivery_tier (patience=$patience_budget, discard_limit=$d
 
 if [[ -n "$MISSION_FILE" && -f "$MISSION_FILE" ]]; then
   cp "$MISSION_FILE" "MISSION.md"
+  # Extract title from mission file for commit message (fallback to filename)
+  mission_title=$(grep -m1 "^# Mission:" "MISSION.md" | sed 's/^# Mission: *//' | head -c 80)
+  if [[ -z "$mission_title" ]]; then
+    mission_title=$(basename "$MISSION_FILE" | head -c 80)
+  fi
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 else
   # Generate from template
   mission_title=$(echo "$PROMPT" | head -c 80)
@@ -249,6 +255,48 @@ STATEEOF
 if [[ -d ".git" ]]; then
   git add MISSION.md odyssey.jsonl "$STATE_FILE" 2>/dev/null || true
   git commit -m "odyssey: init mission — $mission_title" --no-verify 2>/dev/null || true
+fi
+
+# ── Attempt Baseline Measurement ──
+# If a metric command is defined and runnable, capture baseline before waypoint 1.
+# This makes "metric improved" comparisons meaningful from the first waypoint.
+
+baseline_metric="null"
+# Extract guard command from MISSION.md (preferred) or fall back to detected
+mission_guard=$(sed -n '/^## Guard/,/^## /p' MISSION.md 2>/dev/null | sed -n '/^```/,/^```/p' | sed '1d;$d' | head -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+effective_guard="${mission_guard:-$guard_cmd}"
+
+if [[ -n "$effective_guard" && "$effective_guard" != *"no guard defined"* ]]; then
+  # Pick a timeout implementation (GNU coreutils optional on macOS)
+  timeout_cmd=""
+  if command -v timeout >/dev/null 2>&1; then
+    timeout_cmd="timeout 60"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    timeout_cmd="gtimeout 60"
+  fi
+  # Run guard without pipefail so a non-zero exit (or missing timeout binary)
+  # does not swallow the METRIC line we are looking for.
+  baseline_raw=$(set +e; $timeout_cmd bash -c "$effective_guard" 2>/dev/null | grep -E "^METRIC " | tail -1)
+  if [[ -n "$baseline_raw" ]]; then
+    baseline_metric=$(echo "$baseline_raw" | sed -E 's/^METRIC [^=]+=//' | tr -d ' ')
+    # Ensure the baseline_metric field exists, then set it (handles both
+    # template-generated and user-provided --mission-file cases).
+    if ! grep -q "^baseline_metric:" "MISSION.md"; then
+      # Insert after the first frontmatter line (---) at top of file
+      if [[ "$(uname)" == "Darwin" ]]; then
+        sed -i '' '1a\
+baseline_metric: null' "MISSION.md"
+      else
+        sed -i '1a baseline_metric: null' "MISSION.md"
+      fi
+    fi
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sed -i '' "s/^baseline_metric:.*/baseline_metric: ${baseline_metric}/" "MISSION.md"
+    else
+      sed -i "s/^baseline_metric:.*/baseline_metric: ${baseline_metric}/" "MISSION.md"
+    fi
+    echo "Baseline metric captured: $baseline_metric"
+  fi
 fi
 
 # ── Summary ──

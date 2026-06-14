@@ -8,7 +8,7 @@
 1. **Hypothesis selection**: Pick from the Ideas Backlog, ordered by confidence
 2. **Change scope**: Small, targeted changes. Prefer modifying one file over five.
 3. **Risk tolerance**: Low. If unsure whether a change will pass guards, choose a safer approach.
-4. **Stuck recovery**: If 5 consecutive discards, switch to second orientation or pause.
+4. **Stuck recovery**: If `consecutive_discards >= discard_threshold` (tier-dependent, see [convergence-profiles.md](convergence-profiles.md)), the stop hook auto-rotates orientation (non-production) or pauses for human review (production).
 
 ### Decision Matrix
 | Guards | Metric | Complexity | Decision |

@@ -209,15 +209,20 @@ After every KEEP in production mode:
 
 Any new warning triggers a follow-up waypoint to clean up.
 
-### Stuck Recovery (10 consecutive discards)
+### Stuck Recovery (tier-dependent discard_threshold)
 
-The stop hook injects a `STUCK` system message. Options:
+When `consecutive_discards >= discard_threshold` (prototype=5, standard=10, production=15, research=20):
 
-1. **Switch orientation**: `/odyssey --orientation creative` (if currently engineer)
+- **Non-production tiers (prototype/standard/research)**: stop hook auto-rotates orientation (engineer→creative→production→engineer), calls `reset-discards`, and continues the loop. No agent action needed.
+- **Production tier**: stop hook sets `active: false` and surfaces a human-review prompt. Resume with `/odyssey --resume` after triage.
+
+If you are paused for manual recovery (production tier or explicit `auto_orient_switch: false`):
+
+1. **Switch orientation manually**: edit `.claude/odyssey.local.md` `orientation:` field, or restart with `/odyssey --orientation creative`
 2. **Broaden scope**: edit MISSION.md Scope section to allow more files
 3. **Narrow scope**: edit MISSION.md Goal to be more specific
 4. **Cancel**: `/odyssey-cancel`
-5. **Force exit**: output `<converged/>`
+5. **Force exit**: output `<converged/>` only when you have genuine evidence further iteration cannot help
 
 Recommended: try option 1 first (creative mode unlocks divergence), then 2 or 3 if still stuck.
 

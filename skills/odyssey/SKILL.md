@@ -81,13 +81,15 @@ LOOP:
   # DO NOT stop, DO NOT ask for permission
 
   # 8. STOP CONDITIONS (only these stop the loop)
-  ## Convergence: engine auto-detects when improvements plateau
-  ##   - Last 5 waypoints show diminishing returns (metric delta < threshold)
-  ##   - Agent has exhausted Ideas Backlog with no new hypotheses
-  ##   - Self-assessment: "further iterations unlikely to produce meaningful change"
-  ## Stuck detection: 10 consecutive discards → pause for direction
+  ## Convergence: engine auto-detects via odyssey_helper.py convergence-check
+  ##   - avg metric delta over last N keeps < tier's min_metric_delta_pct
+  ##   - OR total waypoints >= tier's patience_budget
+  ##   - (N = convergence_window: prototype=3, standard=5, production=5, research=10)
+  ## Stuck: consecutive_discards >= tier's discard_threshold
+  ##   - prototype/standard/research: auto-rotate orientation, reset discards, continue
+  ##   - production: pause for human review
   ## User interrupt: /odyssey-cancel
-  ## NO iteration limit — runs until converged or interrupted
+  ## NO iteration limit — runs until converged, stuck (production only), or interrupted
 ```
 
 ## Convergence Profiles (Adaptive Convergence)

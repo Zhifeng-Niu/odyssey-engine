@@ -84,6 +84,14 @@ if [[ ! -t 0 ]]; then
   fi
 fi
 
+# Check MISSION.md status: complete → auto-deactivate
+if [[ -f "$mission_file" ]]; then
+  mission_status=$(grep "^status:" "$mission_file" 2>/dev/null | head -1 | sed 's/^status: *//' | tr -d '"' | tr -d "'" || true)
+  if [[ "$mission_status" == "complete" ]]; then
+    deactivate "MISSION.md status is complete — auto-converged"
+  fi
+fi
+
 # Check stuck (10 consecutive discards)
 if [[ "$consecutive_discards" -ge 10 ]]; then
   cat <<EOF

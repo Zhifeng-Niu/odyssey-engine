@@ -34,10 +34,19 @@ started_at=$(get_fm_value "started_at")
 time_budget_seconds=$(get_fm_value "time_budget_seconds" || echo "0")
 consecutive_discards=$(get_fm_value "consecutive_discards" || echo "0")
 mission_file=$(get_fm_value "mission_file" || echo "MISSION.md")
+# Profile-driven convergence parameters (with backward-compatible defaults)
+delivery_tier=$(get_fm_value "delivery_tier" || echo "standard")
+patience_budget=$(get_fm_value "patience_budget" || echo "30")
+discard_threshold=$(get_fm_value "discard_threshold" || echo "10")
+min_metric_delta_pct=$(get_fm_value "min_metric_delta_pct" || echo "0.5")
+convergence_window=$(get_fm_value "convergence_window" || echo "5")
+auto_orient_switch=$(get_fm_value "auto_orient_switch" || echo "true")
 
 # Validate numeric fields
 iteration=${iteration:-0}
 consecutive_discards=${consecutive_discards:-0}
+patience_budget=${patience_budget:-30}
+discard_threshold=${discard_threshold:-10}
 
 # Helper: deactivate mission and allow exit
 deactivate() {
@@ -92,12 +101,46 @@ if [[ -f "$mission_file" ]]; then
   fi
 fi
 
-# Check stuck (10 consecutive discards)
-if [[ "$consecutive_discards" -ge 10 ]]; then
-  cat <<EOF
-{"decision":"block","reason":"stuck: 10 consecutive discards","systemMessage":"ODYSSEY STUCK: 10 consecutive waypoints discarded. No progress. Options:\n1. Switch orientation — output: /odyssey --orientation creative\n2. Broaden scope — edit MISSION.md Goals section\n3. Cancel — output: /odyssey-cancel\n4. Force exit — output: <converged/>\n\nWhat would you like to do?"}
+# Profile-driven convergence check (objective, data-based)
+# Uses odyssey_helper.py convergence-check to read recent waypoints
+if [[ -f "odyssey.jsonl" ]]; then
+  conv_result=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/odyssey_helper.py" convergence-check \
+    --jsonl odyssey.jsonl --tier "$delivery_tier" 2>/dev/null || echo "")
+  if [[ -n "$conv_result" ]]; then
+    converged_flag=$(echo "$conv_result" | python3 -c "import sys,json; print(str(json.load(sys.stdin).get('converged',False)).lower())" 2>/dev/null || echo "false")
+    conv_reason=$(echo "$conv_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('reason',''))" 2>/dev/null || echo "")
+    if [[ "$converged_flag" == "true" ]]; then
+      deactivate "converged: ${conv_reason}"
+    fi
+  fi
+fi
+
+# Profile-driven patience budget check
+if [[ "$iteration" -ge "$patience_budget" ]]; then
+  deactivate "patience budget exhausted: ${iteration}/${patience_budget} waypoints (tier: ${delivery_tier})"
+fi
+
+# Profile-driven stuck detection (uses discard_threshold instead of hardcoded 10)
+if [[ "$consecutive_discards" -ge "$discard_threshold" ]]; then
+  if [[ "$auto_orient_switch" == "true" ]]; then
+    # Auto-switch orientation before pausing
+    case "$orientation" in
+      engineer)  next_orient="creative" ;;
+      creative)  next_orient="production" ;;
+      production) next_orient="engineer" ;;
+      *)         next_orient="creative" ;;
+    esac
+    cat <<EOF
+{"decision":"block","reason":"stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier} threshold ${discard_threshold}) — auto-switching to ${next_orient}","systemMessage":"ODYSSEY STUCK → AUTO-SWITCH\n\nTier: ${delivery_tier} | Discards: ${consecutive_discards}/${discard_threshold} | Patience: ${iteration}/${patience_budget}\n\nProfile says auto_orient_switch=true. Switching from ${orientation} → ${next_orient}.\n\nUpdate .claude/odyssey.local.md:\n  sed -i '' 's/^orientation:.*/orientation: ${next_orient}/' .claude/odyssey.local.md\n  sed -i '' 's/^consecutive_discards:.*/consecutive_discards: 0/' .claude/odyssey.local.md\n\nThen continue with ${next_orient} compass strategy."}
 EOF
-  exit 2
+    exit 2
+  else
+    # production tier: require human decision
+    cat <<EOF
+{"decision":"block","reason":"stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier}, manual review required)","systemMessage":"ODYSSEY STUCK — MANUAL REVIEW REQUIRED\n\nTier: ${delivery_tier} | Discards: ${consecutive_discards}/${discard_threshold} | Patience: ${iteration}/${patience_budget}\n\nProduction tier does NOT auto-switch orientation. Choose:\n1. Switch orientation — output: /odyssey --orientation creative\n2. Broaden scope — edit MISSION.md Goals section\n3. Cancel — output: /odyssey-cancel\n4. Force exit — output: <converged/>"}
+EOF
+    exit 2
+  fi
 fi
 
 # Increment iteration
@@ -116,7 +159,7 @@ fi
 
 # Build actionable continuation prompt with convergence awareness
 cat <<EOF
-{"decision":"block","reason":"odyssey waypoint ${new_iteration}","systemMessage":"ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | discards: ${consecutive_discards}\n\nExecute the next waypoint NOW. Follow these steps in order:\n\n1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"\n2. Read MISSION.md section \"What's Been Tried\" to avoid repeating\n3. CONVERGENCE CHECK: if the last 3+ waypoints show diminishing returns and the backlog is exhausted, output <converged/> to stop the loop. Otherwise continue.\n4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)\n5. Implement the change (one focused idea)\n6. Run verification: syntax check, then guard command, then metric\n7. DECIDE:\n   - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins\n   - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends\n8. Update .claude/odyssey.local.md consecutive_discards counter\n9. Output a ONE LINE recap, then continue to next waypoint\n\nDo NOT stop. Do NOT ask for permission. Do NOT wait for user input.\n\nWhen you judge the task is complete (no more meaningful improvements possible), output <converged/> on a line by itself.\n\n---\nMISSION CONTEXT:\n${mission_context}"}
+{"decision":"block","reason":"odyssey waypoint ${new_iteration}","systemMessage":"ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | tier: ${delivery_tier} | discards: ${consecutive_discards}/${discard_threshold} | patience: ${iteration}/${patience_budget}\n\nExecute the next waypoint NOW. Follow these steps in order:\n\n1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"\n2. Read MISSION.md section \"What's Been Tried\" to avoid repeating\n3. CONVERGENCE CHECK: data-driven check runs automatically before each waypoint. If converged, the loop stops. Otherwise continue. Manual check: if last ${convergence_window}+ keeps show avg delta < ${min_metric_delta_pct}%, output <converged/>.\n4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)\n5. Implement the change (one focused idea)\n6. Run verification: syntax check, then guard command, then metric\n7. DECIDE:\n   - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins, run: python3 \$CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py reset-discards\n   - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends (consecutive_discards will increment)\n8. Output a ONE LINE recap, then continue to next waypoint\n\nProfile context: tier=${delivery_tier}, patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta_pct}%, window=${convergence_window}, auto_switch=${auto_orient_switch}\n\nDo NOT stop. Do NOT ask for permission. Do NOT wait for user input.\n\nWhen you judge the task is complete (no more meaningful improvements possible), output <converged/> on a line by itself.\n\n---\nMISSION CONTEXT:\n${mission_context}"}
 EOF
 
 exit 2

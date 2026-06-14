@@ -15,6 +15,7 @@ MAX_ITERATIONS=0  # 0 = unlimited, like ralph-loop
 TIME_BUDGET=""
 COMPLETION_PROMISE=""
 MISSION_FILE=""
+EXPLICIT_TIER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -23,6 +24,7 @@ while [[ $# -gt 0 ]]; do
     --time-budget)   TIME_BUDGET="$2"; shift 2 ;;
     --completion-promise) COMPLETION_PROMISE="$2"; shift 2 ;;
     --mission-file)  MISSION_FILE="$2"; shift 2 ;;
+    --tier)          EXPLICIT_TIER="$2"; shift 2 ;;
     --resume)        echo "Resuming existing mission..."; exit 0 ;;
     *)               PROMPT="$1"; shift ;;
   esac
@@ -59,13 +61,31 @@ fi
 
 # ── Project Auto-Detection ──
 
-project_info=$(python3 "$HELPER" detect --path "." 2>/dev/null || echo '{"type":"generic"}')
+project_info=$(python3 "$HELPER" detect --path "." 2>/dev/null || echo '{"type":"generic","delivery_tier":"standard","profile":{}}')
 project_type=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('type','generic'))" 2>/dev/null || echo "generic")
 syntax_check=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('syntax_check',''))" 2>/dev/null || echo "")
 guard_cmd=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('guard',''))" 2>/dev/null || echo "")
 default_metric=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('default_metric','manual'))" 2>/dev/null || echo "manual")
+delivery_tier=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('delivery_tier','standard'))" 2>/dev/null || echo "standard")
+patience_budget=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('profile',{}).get('patience_budget',30))" 2>/dev/null || echo "30")
+discard_threshold=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('profile',{}).get('discard_threshold',10))" 2>/dev/null || echo "10")
+min_metric_delta=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('profile',{}).get('min_metric_delta_pct',0.5))" 2>/dev/null || echo "0.5")
+convergence_window=$(echo "$project_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('profile',{}).get('convergence_window',5))" 2>/dev/null || echo "5")
+auto_orient_switch=$(echo "$project_info" | python3 -c "import sys,json; print(str(json.load(sys.stdin).get('profile',{}).get('auto_orient_switch',True)).lower())" 2>/dev/null || echo "true")
+
+# Allow explicit override via flag
+if [[ -n "${EXPLICIT_TIER:-}" ]]; then
+  delivery_tier="$EXPLICIT_TIER"
+  profile_info=$(python3 "$HELPER" profile --tier "$delivery_tier" --json 2>/dev/null || echo "{}")
+  patience_budget=$(echo "$profile_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('patience_budget',30))" 2>/dev/null || echo "30")
+  discard_threshold=$(echo "$profile_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('discard_threshold',10))" 2>/dev/null || echo "10")
+  min_metric_delta=$(echo "$profile_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('min_metric_delta_pct',0.5))" 2>/dev/null || echo "0.5")
+  convergence_window=$(echo "$profile_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('convergence_window',5))" 2>/dev/null || echo "5")
+  auto_orient_switch=$(echo "$profile_info" | python3 -c "import sys,json; print(str(json.load(sys.stdin).get('auto_orient_switch',True)).lower())" 2>/dev/null || echo "true")
+fi
 
 echo "Detected project type: $project_type"
+echo "Delivery tier: $delivery_tier (patience=$patience_budget, discard_limit=$discard_threshold, min_delta=${min_metric_delta}%)"
 
 # ── Create MISSION.md ──
 
@@ -203,11 +223,18 @@ orientation: ${ORIENTATION}
 started_at: ${now}
 mission_file: MISSION.md
 consecutive_discards: 0
+delivery_tier: ${delivery_tier}
+patience_budget: ${patience_budget}
+discard_threshold: ${discard_threshold}
+min_metric_delta_pct: ${min_metric_delta}
+convergence_window: ${convergence_window}
+auto_orient_switch: ${auto_orient_switch}
 ---
 
 # Odyssey Mission Active
 
 Orientation: ${ORIENTATION}
+Delivery tier: ${delivery_tier} (patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta}%)
 Max iterations: ${MAX_ITERATIONS:-unlimited}
 Time budget: ${TIME_BUDGET:-none}
 Project type: ${project_type}
@@ -233,6 +260,7 @@ cat <<SUMMARY
   Goal:         ${PROMPT}
   Orientation:  ${ORIENTATION}
   Project:      ${project_type}
+  Tier:         ${delivery_tier} (patience ${patience_budget}, discard_limit ${discard_threshold}, min_delta ${min_metric_delta}%)
   Branch:       ${branch_name:-N/A}
   Max runs:     unlimited (until done or /odyssey-cancel)
   Time budget:  ${TIME_BUDGET:-none}

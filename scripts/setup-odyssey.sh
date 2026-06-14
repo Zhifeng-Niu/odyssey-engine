@@ -72,11 +72,28 @@ echo "Detected project type: $project_type"
 if [[ -n "$MISSION_FILE" && -f "$MISSION_FILE" ]]; then
   cp "$MISSION_FILE" "MISSION.md"
 else
-  # Generate from prompt
+  # Generate from template
   mission_title=$(echo "$PROMPT" | head -c 80)
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  guard_desc="${guard_cmd:-none}"
+  guard_inline="${guard_cmd:-echo \"no guard defined\"}"
 
-  cat > "MISSION.md" <<MISSIONEOF
+  TEMPLATE_PATH="$SCRIPT_DIR/../templates/MISSION.md.template"
+  if [[ -f "$TEMPLATE_PATH" ]]; then
+    # Use template with token substitution (single source of truth)
+    sed \
+      -e "s|{{ORIENTATION}}|${ORIENTATION}|g" \
+      -e "s|{{NOW}}|${now}|g" \
+      -e "s|{{TITLE}}|${mission_title}|g" \
+      -e "s|{{PROMPT}}|${PROMPT}|g" \
+      -e "s|{{PROJECT_TYPE}}|${project_type}|g" \
+      -e "s|{{GUARD_DESC}}|${guard_desc}|g" \
+      -e "s|{{GUARD_CMD}}|${guard_inline}|g" \
+      -e "s|{{DEFAULT_METRIC}}|${default_metric}|g" \
+      "$TEMPLATE_PATH" > "MISSION.md"
+  else
+    # Fallback: inline heredoc (kept for resilience if template removed)
+    cat > "MISSION.md" <<MISSIONEOF
 ---
 orientation: [${ORIENTATION}]
 status: active
@@ -139,6 +156,7 @@ ${guard_cmd:-echo "no guard defined"}
 ## Ideas Backlog
 {Auto-populated. Can be manually edited.}
 MISSIONEOF
+  fi
 fi
 
 echo "Created MISSION.md"

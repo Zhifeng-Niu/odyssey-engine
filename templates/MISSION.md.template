@@ -1,7 +1,7 @@
 ---
-orientation: [engineer]
+orientation: [{{ORIENTATION}}]
 status: active
-started_at: YYYY-MM-DD
+started_at: {{NOW}}
 expedition_branch: null
 baseline_metric: null
 best_metric: null
@@ -9,37 +9,38 @@ total_waypoints: 0
 consecutive_discards: 0
 ---
 
-# Mission: {TITLE}
+# Mission: {{TITLE}}
 
 ## Goal
-{One sentence. The compass bearing.}
+{{PROMPT}}
 
 ## Context
-{Why this matters. Current state. Background the agent needs.}
+Project type: {{PROJECT_TYPE}}. Auto-detected guard: {{GUARD_DESC}}.
 
 ## Scope
 
 ### Modifiable
-- `path/to/file1` -- description
+- (auto — all files not in Read-Only)
 
 ### Read-Only (PROTECTED)
-- `path/to/config` -- reason
+- (none specified)
 
 ## Metrics
 
 | Name | Unit | Measure Command | Direction |
 |------|------|----------------|-----------|
-| {name} | {unit} | `{command}` | lower/higher |
+| {{DEFAULT_METRIC}} | - | (auto-detected) | lower |
 
 ## Guard
 ```bash
-{command that must exit 0}
+{{GUARD_CMD}}
 ```
 
 ## Termination
-- {Specific condition}
-- OR max {N} waypoints
-- OR user interrupt
+- Task complete (all checks pass AND metric improved)
+- OR stuck (10 consecutive discards)
+- OR user interrupt (/odyssey-cancel)
+- No iteration limit — runs until done
 
 ## What's Been Tried
 
@@ -53,9 +54,8 @@ consecutive_discards: 0
 {Unexpected findings. Auto-updated in creative mode.}
 
 ## Current Best
-- {metric_name}: {value} (Run #{N})
-- Baseline: {value}
-- Improvement: {+/-X%}
+- metric: (baseline not yet measured)
+- Baseline: (pending)
 
 ## Ideas Backlog
 {Auto-populated. Can be manually edited.}

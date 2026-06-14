@@ -90,6 +90,51 @@ LOOP:
   ## NO iteration limit — runs until converged or interrupted
 ```
 
+## Convergence Profiles (Adaptive Convergence)
+
+The loop self-terminates based on **objective data**, not agent self-assessment. Each mission gets a ConvergenceProfile based on project type and delivery tier.
+
+### Four Delivery Tiers
+
+| Tier | Patience | Discard Limit | Min Delta | Window | Auto-Switch | When |
+|------|----------|---------------|-----------|--------|-------------|------|
+| **prototype** | 15 | 5 | 1.0% | 3 | yes | Throwaway scripts, demos, no tests/CI |
+| **standard** | 30 | 10 | 0.5% | 5 | yes | Typical project with tests or CI |
+| **production** | 50 | 15 | 0.1% | 5 | **no** | Mission-critical, semver ≥ 1.0, tests+CI+changelog |
+| **research** | 100 | 20 | 0.0% | 10 | yes | Open-ended exploration, no guard |
+
+### Auto-Inference
+
+Tier is auto-inferred from project signals:
+- `tests/` dir, `test_*.py`, `*_test.go`, `*.spec.ts` → has_tests
+- `.github/workflows`, `.gitlab-ci.yml`, `Jenkinsfile` → has_ci
+- `CHANGELOG.md`, `CHANGES.md` → has_changelog
+- `docs/`, `README.md` → has_docs
+- `version` in package.json/plugin.json/Cargo.toml → version_major
+
+Override with `--tier`:
+```
+/odyssey "mission" --orientation production --tier production
+```
+
+### How Convergence Is Detected
+
+The stop hook runs `odyssey_helper.py convergence-check` before each waypoint. It returns `converged: true` when:
+
+1. **Diminishing returns**: avg metric delta over last N keeps < tier's min_delta_pct
+2. **Patience budget exhausted**: total waypoints >= tier's patience_budget
+3. (Stuck is NOT convergence — it triggers orientation switch instead)
+
+When converged, hook auto-deactivates and allows exit. Agent does NOT need to output `<converged/>` — the data decides.
+
+### Stuck Recovery (Profile-Driven)
+
+When `consecutive_discards >= discard_threshold`:
+- If `auto_orient_switch: true` (prototype/standard/research): hook auto-rotates orientation (engineer→creative→production→engineer) and resets discards
+- If `auto_orient_switch: false` (production): hook pauses for human review
+
+See [convergence-profiles.md](references/convergence-profiles.md) for full parameter reference.
+
 ## Orientation Strategies
 
 ### Engineer (default)
@@ -207,3 +252,4 @@ odyssey.jsonl summary:
 - [compass-strategies.md](references/compass-strategies.md) — orientation strategies
 - [verification-patterns.md](references/verification-patterns.md) — verification pipeline
 - [mission-format.md](references/mission-format.md) — MISSION.md specification
+- [convergence-profiles.md](references/convergence-profiles.md) — adaptive convergence tiers

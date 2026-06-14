@@ -36,14 +36,17 @@ git clone https://github.com/Zhifeng-Niu/odyssey-engine.git ~/.claude/plugins/od
 ## Quick Start
 
 ```
-# Code optimization — runs until converged
+# Code optimization — auto-infers tier from project, runs until data-driven convergence
 /odyssey "Reduce API latency below 200ms" --orientation production
 
-# Research exploration
-/odyssey "Find the most promising architecture for event processing" --orientation creative
+# Explicit tier override
+/odyssey "Mission-critical optimization" --orientation production --tier production
 
-# Writing refinement
-/odyssey "Improve this essay's readability score to grade 8 level" --orientation engineer
+# Research exploration (100 waypoint patience, any delta counts)
+/odyssey "Find the most promising architecture for event processing" --orientation creative --tier research
+
+# Throwaway script (15 waypoint patience, fast give-up)
+/odyssey "Scrape this URL and parse JSON" --tier prototype
 
 # With time budget (optional)
 /odyssey "Refactor the auth module" --orientation production --time-budget 30m
@@ -51,6 +54,21 @@ git clone https://github.com/Zhifeng-Niu/odyssey-engine.git ~/.claude/plugins/od
 # Resume
 /odyssey --resume
 ```
+
+## Adaptive Convergence
+
+The loop adapts its patience and convergence thresholds based on project type:
+
+| Tier | Patience | Discard Limit | Min Delta | Auto-Switch | Inferred When |
+|------|----------|---------------|-----------|-------------|---------------|
+| **prototype** | 15 | 5 | 1.0% | yes | No tests, no CI, no changelog |
+| **standard** | 30 | 10 | 0.5% | yes | Has tests OR CI OR changelog |
+| **production** | 50 | 15 | 0.1% | **no** | tests + CI + version≥1.0 + docs/changelog |
+| **research** | 100 | 20 | any | yes | No guard, exploratory |
+
+Auto-inference signals: `tests/`, `test_*.py`, `.github/workflows/`, `CHANGELOG.md`, `version` in package.json/plugin.json/Cargo.toml, `docs/`.
+
+Override with `--tier`. See [convergence-profiles.md](skills/odyssey/references/convergence-profiles.md) for details.
 
 ## How It Works
 
@@ -70,14 +88,15 @@ WAYPOINT += 1
 
 ### Convergence
 
-Odyssey runs until the task is done — no fixed iteration limit. The agent self-detects when improvements plateau:
+Odyssey runs until the task is done — no fixed iteration limit. **Convergence is detected by objective data**, not agent self-report:
 
-- **Convergence signal**: when the last 3+ waypoints show diminishing returns and the idea backlog is exhausted, the agent outputs `<converged/>` to stop
-- **Stuck detection**: 10 consecutive discards pauses the loop for direction
+- **Data-driven convergence**: stop hook runs `odyssey_helper.py convergence-check` before each waypoint. Auto-deactivates when avg metric delta over last N keeps < tier's min_delta_pct, OR patience budget exhausted.
+- **Adaptive profiles**: four delivery tiers (prototype/standard/production/research) with distinct patience/discard/delta parameters, auto-inferred from project signals (tests, CI, changelog, version, docs).
+- **Auto orientation switch**: when stuck, non-production tiers auto-rotate orientation (engineer→creative→production). Production tier requires human review.
 - **User interrupt**: `/odyssey-cancel` at any time
 - **Time budget**: optional `--time-budget` hard cap
 
-Like ralph-loop, it trusts the executing agent to know when the work is finished.
+The agent can still force-exit via `<converged/>` if it judges the data misleading, but normally the data decides.
 
 ### MISSION.md
 
@@ -137,18 +156,25 @@ When facing a "giant" — a task that seems impossible:
 ```
 odyssey-engine/
 ├── plugin.json              # Plugin manifest
+├── .claude-plugin/          # Claude Code plugin spec
 ├── skills/odyssey/
 │   ├── SKILL.md             # Core loop definition
-│   └── references/          # Detailed strategies
+│   └── references/          # Detailed strategies (5 files)
+│       ├── loop-procedures.md
+│       ├── compass-strategies.md
+│       ├── verification-patterns.md
+│       ├── mission-format.md
+│       └── convergence-profiles.md
 ├── commands/                # /odyssey, /odyssey-status, /odyssey-cancel
 ├── agents/                  # odyssey-explorer, odyssey-critic
 ├── hooks/
-│   └── stop-hook.sh         # Continuous execution + convergence detection
+│   └── stop-hook.sh         # Continuous execution + adaptive convergence detection
 ├── scripts/
-│   ├── setup-odyssey.sh     # Mission initialization
-│   └── odyssey_helper.py    # JSONL management + project detection
+│   ├── setup-odyssey.sh     # Mission initialization + tier inference
+│   ├── odyssey_helper.py    # JSONL mgmt + project detect + convergence check
+│   └── sync-cache.sh        # CC plugin cache sync
 └── templates/
-    └── MISSION.md.template
+    └── MISSION.md.template  # Single source of truth for MISSION.md
 ```
 
 ## State Files

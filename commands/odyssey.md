@@ -27,12 +27,12 @@ allowed-tools:
 ## Arguments
 
 ```
-/odyssey PROMPT [--orientation engineer|creative|production] [--time-budget 30m|2h] [--completion-promise TEXT]
+/odyssey PROMPT [--orientation engineer|creative|production] [--time-budget 30m|2h] [--completion-promise TEXT] [--tier prototype|standard|production|research]
 /odyssey --resume
 /odyssey --mission-file PATH
 ```
 
-Do NOT pass --max-iterations. The loop runs until convergence is detected (diminishing returns across waypoints) or the user interrupts with /odyssey-cancel.
+Do NOT pass --max-iterations. The loop runs until convergence is detected (objective data-driven check) or the user interrupts with /odyssey-cancel.
 
 ## Behavior
 
@@ -40,25 +40,27 @@ Do NOT pass --max-iterations. The loop runs until convergence is detected (dimin
 
 1. Run the setup script to initialize:
    ```bash
-   bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh "PROMPT" --orientation ORIENTATION
+   bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh "PROMPT" --orientation ORIENTATION [--tier TIER]
    ```
-   Do NOT add --max-iterations. The loop stops by convergence detection, not a fixed count.
+   Do NOT add --max-iterations. The loop stops by data-driven convergence detection, not a fixed count.
 
 2. The setup script will:
-   - Auto-detect project type
+   - Auto-detect project type and characteristics (tests, CI, changelog, version, docs)
+   - Infer delivery_tier (prototype/standard/production/research) — override with `--tier`
+   - Generate ConvergenceProfile (patience_budget, discard_threshold, min_metric_delta_pct, etc.)
    - Create `MISSION.md` from template (or copy from `--mission-file`)
    - Create expedition branch `odyssey/{slug}-{date}`
    - Initialize `odyssey.jsonl` with config header
-   - Create `.claude/odyssey.local.md` state file
+   - Create `.claude/odyssey.local.md` state file with profile parameters
    - Commit state files
 
 3. After setup, begin the Odyssey loop following the SKILL.md loop procedure.
 
 4. The stop hook will keep the loop running until:
-   - Convergence detected (diminishing returns, exhausted backlog, agent self-assesses no further meaningful improvement)
+   - **Convergence detected by data** (diminishing returns OR patience budget exhausted) — auto-deactivates, no agent self-report needed
    - Completion promise is fulfilled
    - Time budget exceeded
-   - Stuck (10 consecutive discards)
+   - Stuck (consecutive discards ≥ tier's discard_threshold) — auto-switches orientation (unless production tier)
    - User runs `/odyssey-cancel`
 
 ### Resume Mission

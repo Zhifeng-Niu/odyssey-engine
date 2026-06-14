@@ -123,18 +123,37 @@ Surprises are logged with extra detail in MISSION.md "Surprises" section.
 Specify multiple in MISSION.md: `orientation: [engineer, creative]`
 
 - Primary orientation is the default strategy
-- If stuck (5 consecutive discards), switch to secondary
-- If secondary also stuck, pause for user direction
-- Compass logs which orientation was active for each waypoint
+- If `consecutive_discards >= discard_threshold` (tier-dependent: prototype=5, standard=10, production=15, research=20), the stop hook auto-switches to the next orientation in the list (non-production tiers only — see [convergence-profiles.md](convergence-profiles.md))
+- If all listed orientations exhaust, production tier pauses for human review; non-production tiers cycle back to the first orientation with a fresh discard budget
+- Compass logs which orientation was active for each waypoint (kept in `odyssey.jsonl` `description` field)
 
-## Stuck Detection and Recovery
+## Stuck Detection and Recovery (Profile-Driven)
 
-**Stuck = 10 consecutive discards**
+**Stuck = `consecutive_discards >= discard_threshold`** (tier-dependent, see table below).
 
-The stop hook will inject a warning. The agent should:
+| Tier | discard_threshold | Auto-Switch |
+|------|-------------------|-------------|
+| prototype | 5 | yes (rotate engineer→creative→production) |
+| standard | 10 | yes |
+| production | 15 | **no** — pause for human review |
+| research | 20 | yes |
 
-1. Analyze the pattern of failures — are they all the same type?
-2. Consider switching orientation
-3. Consider broadening scope (maybe the constraint is wrong)
-4. Consider narrowing scope (maybe the task is too large)
-5. Output `<promise>STUCK</promise>` to exit gracefully if no path forward
+### What happens when stuck
+
+1. The stop hook detects `consecutive_discards >= discard_threshold`
+2. **If `auto_orient_switch: true`** (prototype/standard/research): hook rotates orientation, calls `reset-discards` to zero the counter, and continues the loop with the new strategy. No agent intervention needed.
+3. **If `auto_orient_switch: false`** (production tier): hook sets `active: false` and surfaces a human-review prompt. Resume with `/odyssey --resume` after manual triage.
+
+### What the agent should do when stuck AND no auto-switch available
+
+If the agent notices the loop is paused (production tier or manual override):
+
+1. **Analyze failure patterns** — are all discards the same root cause? Same guard? Same file?
+2. **Broaden scope** — the constraint itself may be wrong (e.g. test that no longer reflects requirements)
+3. **Narrow scope** — the task may be too large for one waypoint; split into smaller hypotheses
+4. **Switch orientation manually** — edit `.claude/odyssey.local.md` `orientation:` field, or restart with `/odyssey --orientation creative`
+5. **Output `<converged/>`** only when you have genuine evidence that further iteration cannot help (e.g. metric is already at theoretical optimum, or all hypotheses exhausted with documented dead ends)
+
+### Convergence (different from stuck)
+
+Stuck is about consecutive *discards*. Convergence is about diminishing *returns on keeps*. See [convergence-profiles.md](convergence-profiles.md) for the full data-driven convergence algorithm.

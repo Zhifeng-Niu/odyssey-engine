@@ -9,6 +9,14 @@
 # No iteration limit — like ralph-loop, it runs until the work is done.
 set -euo pipefail
 
+# Fallback for CLAUDE_PLUGIN_ROOT when running outside Claude Code
+# (e.g. debugging, manual invocation). Claude Code injects this normally.
+if [[ -z "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  CLAUDE_PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+export CLAUDE_PLUGIN_ROOT
+
 STATE_FILE=".claude/odyssey.local.md"
 
 # No state file → no active mission → allow exit
@@ -123,15 +131,23 @@ fi
 # Profile-driven stuck detection (uses discard_threshold instead of hardcoded 10)
 if [[ "$consecutive_discards" -ge "$discard_threshold" ]]; then
   if [[ "$auto_orient_switch" == "true" ]]; then
-    # Auto-switch orientation before pausing
+    # Auto-switch orientation: stop hook directly mutates state file
+    # (fully autonomous — does not depend on agent running sed)
     case "$orientation" in
       engineer)  next_orient="creative" ;;
       creative)  next_orient="production" ;;
       production) next_orient="engineer" ;;
       *)         next_orient="creative" ;;
     esac
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sed -i '' "s/^orientation:.*/orientation: ${next_orient}/" "$STATE_FILE"
+      sed -i '' "s/^consecutive_discards:.*/consecutive_discards: 0/" "$STATE_FILE"
+    else
+      sed -i "s/^orientation:.*/orientation: ${next_orient}/" "$STATE_FILE"
+      sed -i "s/^consecutive_discards:.*/consecutive_discards: 0/" "$STATE_FILE"
+    fi
     cat <<EOF
-{"decision":"block","reason":"stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier} threshold ${discard_threshold}) — auto-switching to ${next_orient}","systemMessage":"ODYSSEY STUCK → AUTO-SWITCH\n\nTier: ${delivery_tier} | Discards: ${consecutive_discards}/${discard_threshold} | Patience: ${iteration}/${patience_budget}\n\nProfile says auto_orient_switch=true. Switching from ${orientation} → ${next_orient}.\n\nUpdate .claude/odyssey.local.md:\n  sed -i '' 's/^orientation:.*/orientation: ${next_orient}/' .claude/odyssey.local.md\n  sed -i '' 's/^consecutive_discards:.*/consecutive_discards: 0/' .claude/odyssey.local.md\n\nThen continue with ${next_orient} compass strategy."}
+{"decision":"block","reason":"stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier} threshold ${discard_threshold}) — auto-switched to ${next_orient}","systemMessage":"ODYSSEY STUCK → AUTO-SWITCH (already applied)\n\nTier: ${delivery_tier} | Discards were ${consecutive_discards}/${discard_threshold} (now reset to 0) | Patience: ${iteration}/${patience_budget}\n\nStop hook has switched orientation: ${orientation} → ${next_orient}. State file already updated. Continue with ${next_orient} compass strategy. No manual action required."}
 EOF
     exit 2
   else

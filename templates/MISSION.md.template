@@ -25,6 +25,15 @@ Project type: {{PROJECT_TYPE}}. Auto-detected guard: {{GUARD_DESC}}.
 ### Read-Only (PROTECTED)
 - (none specified)
 
+## Arsenal
+
+Capabilities engaged for this mission (skills / agents / LSPs / MCP tools).
+Living section — extend as the mission discovers new needs.
+
+| Capability | Use when |
+|------------|----------|
+| (populate at mission start) | |
+
 ## Metrics
 
 | Name | Unit | Measure Command | Direction |

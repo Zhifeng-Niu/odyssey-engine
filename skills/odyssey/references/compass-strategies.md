@@ -149,10 +149,11 @@ Specify multiple in MISSION.md: `orientation: [engineer, creative]`
 If the agent notices the loop is paused (production tier or manual override):
 
 1. **Analyze failure patterns** — are all discards the same root cause? Same guard? Same file?
-2. **Broaden scope** — the constraint itself may be wrong (e.g. test that no longer reflects requirements)
-3. **Narrow scope** — the task may be too large for one waypoint; split into smaller hypotheses
-4. **Switch orientation manually** — edit `.claude/odyssey.local.md` `orientation:` field, or restart with `/odyssey --orientation creative`
-5. **Output `<converged/>`** only when you have genuine evidence that further iteration cannot help (e.g. metric is already at theoretical optimum, or all hypotheses exhausted with documented dead ends)
+2. **Reach for the arsenal** — an unused tool, skill, or agent is a legitimate hypothesis, often the cheapest one (see SKILL.md "Arsenal — Full Capability Activation")
+3. **Broaden scope** — the constraint itself may be wrong (e.g. test that no longer reflects requirements)
+4. **Narrow scope** — the task may be too large for one waypoint; split into smaller hypotheses
+5. **Switch orientation manually** — edit `.claude/odyssey.local.md` `orientation:` field, or restart with `/odyssey --orientation creative`
+6. **Output `<converged/>`** only when you have genuine evidence that further iteration cannot help (e.g. metric is already at theoretical optimum, or all hypotheses exhausted with documented dead ends)
 
 ### Convergence (different from stuck)
 

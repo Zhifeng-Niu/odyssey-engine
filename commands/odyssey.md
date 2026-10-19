@@ -15,6 +15,10 @@ allowed-tools:
   - "Bash(git branch:*)"
   - "Bash(cat .claude/odyssey.local.md:*)"
   - "Bash(test -f .claude/odyssey.local.md:*)"
+  - "Task"
+  - "Skill"
+  - "WebSearch"
+  - "WebFetch"
   - "Read"
   - "Write"
   - "Edit"
@@ -54,9 +58,15 @@ Do NOT pass --max-iterations. The loop runs until convergence is detected (objec
    - Create `.claude/odyssey.local.md` state file with profile parameters
    - Commit state files
 
-3. After setup, begin the Odyssey loop following the SKILL.md loop procedure.
+3. After setup, activate the arsenal (see SKILL.md "Arsenal — Full Capability Activation"):
+   inventory the session's skills, agents, LSPs, and MCP tools, select what
+   serves this mission, and record selections in MISSION.md `## Arsenal`.
+   The whole session's capability surface serves the mission — not just
+   odyssey's own components.
 
-4. The stop hook will keep the loop running until:
+4. Begin the Odyssey loop following the SKILL.md loop procedure.
+
+5. The stop hook will keep the loop running until:
    - **Convergence detected by data** (diminishing returns OR patience budget exhausted) — auto-deactivates, no agent self-report needed
    - Completion promise is fulfilled
    - Time budget exceeded

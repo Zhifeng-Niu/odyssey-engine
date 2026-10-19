@@ -92,6 +92,37 @@ LOOP:
   ## NO iteration limit — runs until converged, stuck (production only), or interrupted
 ```
 
+## Arsenal — Full Capability Activation
+
+A mission runs inside a full Claude Code session: **every installed skill,
+plugin, agent, MCP server, and LSP is available to it.** Odyssey's own
+components are the engine, not the toolbox — treat the whole session as
+the mission's arsenal.
+
+**At mission start (before waypoint 1):**
+1. Inventory the capability surface relevant to THIS mission: skills
+   (framework patterns, TDD, research, domain knowledge), agents
+   (code-reviewer, security-reviewer, explorer…), LSP servers, MCP tools.
+2. Select what serves the mission and record it in MISSION.md `## Arsenal`
+   — one line each: capability → when to use. This section is living:
+   extend it as the mission discovers new needs.
+
+**During waypoints:**
+- *Verification*: LSP diagnostics feed Layers 0/3; in production tier, run
+  reviewer agents (code-reviewer, security-reviewer) on a diff before KEEP
+- *Research (creative orientation)*: web search, docs skills, odyssey-explorer
+  for cross-pollination
+- *Domain knowledge*: reach for pattern skills before touching unfamiliar
+  territory instead of improvising
+
+**When stuck (compass move):**
+An unused tool, skill, or agent is a legitimate hypothesis — often the
+cheapest one on the board. Before rotating orientation, ask: *is there a
+capability I haven't reached for?*
+
+MCP tools follow the session's permission settings; if a tool would prompt
+mid-loop, prefer alternatives that keep the mission autonomous.
+
 ## Convergence Profiles (Adaptive Convergence)
 
 The loop self-terminates based on **objective data**, not agent self-assessment. Each mission gets a ConvergenceProfile based on project type and delivery tier.

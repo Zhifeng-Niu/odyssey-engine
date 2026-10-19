@@ -48,6 +48,21 @@ pre-pivot measurements say nothing about the new objective. Patience
 budget effectively restarts. Edit MISSION.md's Goal/Metrics/Termination
 sections in the same waypoint, so the document and the data agree.
 
+### Arsenal (Living Section, Agent-Populated)
+
+The mission commands the whole session's capability surface. At mission
+start the agent inventories relevant skills / agents / LSPs / MCP tools
+and records them here; extend as the mission discovers new needs.
+
+```markdown
+## Arsenal
+| Capability | Use when |
+|------------|----------|
+| typescript-lsp | Layer 0/3 diagnostics on every edit |
+| code-reviewer agent | review diff before KEEP (production tier) |
+| postgres-patterns | touching schema or slow queries |
+```
+
 ### Context (Optional, Human-Edited)
 
 Why this matters. What's the current state. Any background the agent needs.

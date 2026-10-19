@@ -217,7 +217,7 @@ Execute the next waypoint NOW. Follow these steps in order:
 1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"
 2. Read MISSION.md section \"What's Been Tried\" to avoid repeating
 3. CONVERGENCE CHECK: data-driven check runs automatically before each waypoint. If converged, the loop stops. Otherwise continue. Manual check: if last ${convergence_window}+ keeps show avg delta < ${min_metric_delta_pct}%, output <converged/>.
-4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)
+4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one). An unused tool, skill, or agent counts as a hypothesis — check MISSION.md Arsenal
 5. Implement the change (one focused idea)
 6. Run verification: syntax check, then guard command, then metric
 7. DECIDE:

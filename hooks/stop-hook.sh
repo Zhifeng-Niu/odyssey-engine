@@ -17,6 +17,21 @@ if [[ -z "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
 fi
 export CLAUDE_PLUGIN_ROOT
 
+# Emit a hook decision JSON safely.
+# Reason/systemMessage may contain quotes and newlines; python json.dumps
+# escapes them so Claude Code's strict parser accepts the object.
+# NOTE: systemMessage is capped at 10,000 chars by Claude Code — keep it short.
+emit_json() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import json, sys
+print(json.dumps({
+    "decision": sys.argv[1],
+    "reason": sys.argv[2],
+    "systemMessage": sys.argv[3],
+}))
+PY
+}
+
 STATE_FILE=".claude/odyssey.local.md"
 
 # No state file → no active mission → allow exit
@@ -66,7 +81,7 @@ deactivate() {
     sed -i 's/^active:.*/active: false/' "$STATE_FILE"
     sed -i 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
   fi
-  echo '{"decision":"allow","reason":"'"$reason"'"}'
+  emit_json "allow" "$reason" ""
   exit 0
 }
 
@@ -88,7 +103,7 @@ if [[ -n "$completion_promise" ]]; then
   if [[ ! -t 0 ]]; then
     stdin_data=$(cat)
   fi
-  if echo "$stdin_data" | grep -q "<promise>${completion_promise}<\/promise>"; then
+  if echo "$stdin_data" | grep -F -q "<promise>${completion_promise}</promise>"; then
     deactivate "completion promise fulfilled"
   fi
 fi
@@ -146,15 +161,27 @@ if [[ "$consecutive_discards" -ge "$discard_threshold" ]]; then
       sed -i "s/^orientation:.*/orientation: ${next_orient}/" "$STATE_FILE"
       sed -i "s/^consecutive_discards:.*/consecutive_discards: 0/" "$STATE_FILE"
     fi
-    cat <<EOF
-{"decision":"block","reason":"stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier} threshold ${discard_threshold}) — auto-switched to ${next_orient}","systemMessage":"ODYSSEY STUCK → AUTO-SWITCH (already applied)\n\nTier: ${delivery_tier} | Discards were ${consecutive_discards}/${discard_threshold} (now reset to 0) | Patience: ${iteration}/${patience_budget}\n\nStop hook has switched orientation: ${orientation} → ${next_orient}. State file already updated. Continue with ${next_orient} compass strategy. No manual action required."}
-EOF
+    emit_json "block" \
+      "stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier} threshold ${discard_threshold}) — auto-switched to ${next_orient}" \
+      "ODYSSEY STUCK → AUTO-SWITCH (already applied)
+
+Tier: ${delivery_tier} | Discards were ${consecutive_discards}/${discard_threshold} (now reset to 0) | Patience: ${iteration}/${patience_budget}
+
+Stop hook has switched orientation: ${orientation} → ${next_orient}. State file already updated. Continue with ${next_orient} compass strategy. No manual action required."
     exit 2
   else
     # production tier: require human decision
-    cat <<EOF
-{"decision":"block","reason":"stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier}, manual review required)","systemMessage":"ODYSSEY STUCK — MANUAL REVIEW REQUIRED\n\nTier: ${delivery_tier} | Discards: ${consecutive_discards}/${discard_threshold} | Patience: ${iteration}/${patience_budget}\n\nProduction tier does NOT auto-switch orientation. Choose:\n1. Switch orientation — output: /odyssey --orientation creative\n2. Broaden scope — edit MISSION.md Goals section\n3. Cancel — output: /odyssey-cancel\n4. Force exit — output: <converged/>"}
-EOF
+    emit_json "block" \
+      "stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier}, manual review required)" \
+      "ODYSSEY STUCK — MANUAL REVIEW REQUIRED
+
+Tier: ${delivery_tier} | Discards: ${consecutive_discards}/${discard_threshold} | Patience: ${iteration}/${patience_budget}
+
+Production tier does NOT auto-switch orientation. Choose:
+1. Switch orientation — output: /odyssey --orientation creative
+2. Broaden scope — edit MISSION.md Goals section
+3. Cancel — output: /odyssey-cancel
+4. Force exit — output: <converged/>"
     exit 2
   fi
 fi
@@ -167,15 +194,39 @@ else
   sed -i "s/^iteration:.*/iteration: ${new_iteration}/" "$STATE_FILE"
 fi
 
-# Read MISSION.md for context (truncate to avoid oversized systemMessage)
+# Read MISSION.md for context.
+# systemMessage is capped at 10,000 chars by Claude Code — truncate hard.
 mission_context=""
 if [[ -f "$mission_file" ]]; then
-  mission_context=$(head -80 "$mission_file")
+  mission_context=$(head -80 "$mission_file" | head -c 3500)
 fi
 
 # Build actionable continuation prompt with convergence awareness
-cat <<EOF
-{"decision":"block","reason":"odyssey waypoint ${new_iteration}","systemMessage":"ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | tier: ${delivery_tier} | discards: ${consecutive_discards}/${discard_threshold} | patience: ${iteration}/${patience_budget}\n\nExecute the next waypoint NOW. Follow these steps in order:\n\n1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"\n2. Read MISSION.md section \"What's Been Tried\" to avoid repeating\n3. CONVERGENCE CHECK: data-driven check runs automatically before each waypoint. If converged, the loop stops. Otherwise continue. Manual check: if last ${convergence_window}+ keeps show avg delta < ${min_metric_delta_pct}%, output <converged/>.\n4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)\n5. Implement the change (one focused idea)\n6. Run verification: syntax check, then guard command, then metric\n7. DECIDE:\n   - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins, run: python3 \$CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py reset-discards\n   - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends (consecutive_discards will increment)\n8. Output a ONE LINE recap, then continue to next waypoint\n\nProfile context: tier=${delivery_tier}, patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta_pct}%, window=${convergence_window}, auto_switch=${auto_orient_switch}\n\nDo NOT stop. Do NOT ask for permission. Do NOT wait for user input.\n\nWhen you judge the task is complete (no more meaningful improvements possible), output <converged/> on a line by itself.\n\n---\nMISSION CONTEXT:\n${mission_context}"}
-EOF
+emit_json "block" \
+  "odyssey waypoint ${new_iteration}" \
+  "ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | tier: ${delivery_tier} | discards: ${consecutive_discards}/${discard_threshold} | patience: ${iteration}/${patience_budget}
+
+Execute the next waypoint NOW. Follow these steps in order:
+
+1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"
+2. Read MISSION.md section \"What's Been Tried\" to avoid repeating
+3. CONVERGENCE CHECK: data-driven check runs automatically before each waypoint. If converged, the loop stops. Otherwise continue. Manual check: if last ${convergence_window}+ keeps show avg delta < ${min_metric_delta_pct}%, output <converged/>.
+4. Pick ONE hypothesis from the Ideas Backlog (or generate a new one)
+5. Implement the change (one focused idea)
+6. Run verification: syntax check, then guard command, then metric
+7. DECIDE:
+   - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins, run: python3 \$CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py reset-discards
+   - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends (consecutive_discards will increment)
+8. Output a ONE LINE recap, then continue to next waypoint
+
+Profile context: tier=${delivery_tier}, patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta_pct}%, window=${convergence_window}, auto_switch=${auto_orient_switch}
+
+Do NOT stop. Do NOT ask for permission. Do NOT wait for user input.
+
+When you judge the task is complete (no more meaningful improvements possible), output <converged/> on a line by itself.
+
+---
+MISSION CONTEXT:
+${mission_context}"
 
 exit 2

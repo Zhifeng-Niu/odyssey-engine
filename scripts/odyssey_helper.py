@@ -329,7 +329,26 @@ def init_log(args):
 
 
 def log_waypoint(args):
-    """Append a waypoint result to the JSONL log."""
+    """Append a waypoint result (or a pivot marker) to the JSONL log."""
+    if not args.pivot and not args.status:
+        raise SystemExit("odyssey_helper.py log: error: --status is required unless --pivot")
+    if args.pivot and (args.status or args.metric is not None):
+        raise SystemExit("odyssey_helper.py log: error: --pivot cannot be combined with --status/--metric")
+
+    timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+    if args.pivot:
+        # Goal revision: marks a mission setpoint change. Convergence
+        # evidence counts only waypoints logged after the last pivot.
+        entry = {
+            "type": "pivot",
+            "run": args.run,
+            "description": args.description or "goal revised",
+            "timestamp": timestamp,
+        }
+        with open(args.jsonl, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+        return
+
     entry = {
         "run": args.run,
         "commit": args.commit or "0000000",
@@ -491,10 +510,11 @@ def main():
     p_log.add_argument("--run", type=int, required=True, help="Waypoint number")
     p_log.add_argument("--commit", default=None, help="Git commit SHA")
     p_log.add_argument("--metric", type=float, default=None, help="Metric value")
-    p_log.add_argument("--status", required=True, choices=["keep", "discard"], help="Result status")
+    p_log.add_argument("--status", default=None, choices=["keep", "discard"], help="Result status (required unless --pivot)")
     p_log.add_argument("--description", default="", help="What was tried")
     p_log.add_argument("--secondary-metrics", default=None, help="JSON string of secondary metrics")
     p_log.add_argument("--asi", default=None, help="JSON string or plain text for ASI data")
+    p_log.add_argument("--pivot", action="store_true", help="Log a goal revision instead of a waypoint result")
 
     # evaluate
     p_eval = sub.add_parser("evaluate", help="Evaluate if a metric is an improvement")
@@ -579,6 +599,15 @@ def cmd_convergence_check(args):
     min_delta = profile["min_metric_delta_pct"]
 
     entries = _read_entries(args.jsonl)
+
+    # Non-stationary missions: a pivot entry marks a goal revision.
+    # Evidence counts only waypoints logged after the last pivot —
+    # pre-pivot measurements say nothing about the current objective.
+    pivot_idx = [i for i, e in enumerate(entries) if e.get("type") == "pivot"]
+    pivots = len(pivot_idx)
+    if pivot_idx:
+        entries = entries[pivot_idx[-1] + 1:]
+
     keeps = [e for e in entries if e.get("status") == "keep" and "metric" in e]
 
     result = {
@@ -587,11 +616,14 @@ def cmd_convergence_check(args):
         "evidence": [],
         "tier": args.tier,
         "window": window,
+        "pivots": pivots,
     }
 
     # Not enough data yet
     if len(kills_check := keeps) < window:
         result["reason"] = f"insufficient data ({len(kills_check)}/{window} keeps needed)"
+        if pivots:
+            result["reason"] += f" since last of {pivots} pivot(s)"
         print(json.dumps(result, indent=2))
         return
 

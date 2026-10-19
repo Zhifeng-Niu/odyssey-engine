@@ -22,7 +22,15 @@ waypoint record (one JSON line):
   "status": "keep" | "discard",  # was this attempt retained?
   "metric": 182.4,               # primary measurement (float)
   "secondaryMetrics": {...},     # optional
-  "note": "connection pooling"   # optional
+  "note": "connection pooling",  # optional
+  "revision": 2                  # optional: goal revision this waypoint served
+}
+
+pivot record (goal revision — partitions evidence):
+{
+  "type": "pivot",
+  "run": 8,
+  "note": "latency met; new goal = memory ceiling < 512MB"
 }
 
 verdict (stdout JSON):
@@ -31,6 +39,7 @@ verdict (stdout JSON):
   "confidence": "high" | "low",
   "reason": "avg delta 0.075% < 0.5% over last 5 keeps",
   "evidence": [ ...per-check results... ],
+  "pivots": 1,                   # goal revisions seen
   "suggestion": "rotate-orientation" | null
 }
 ```
@@ -39,6 +48,9 @@ Guarantees:
 - stdlib-only, zero deps, single file (`convergence.py`)
 - deterministic: same records + profile ⇒ same verdict
 - the layer NEVER mutates caller state; callers own keep/discard
+- **non-stationary**: pivot records partition evidence — verdicts weigh
+  only waypoints served by the *current* objective. A loop that changed
+  its mind is not penalized by its own history. (Shipped in v1.1.1.)
 
 ## Profiles as data
 

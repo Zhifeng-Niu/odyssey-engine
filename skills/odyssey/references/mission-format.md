@@ -30,6 +30,24 @@ One sentence. The compass bearing. Everything the engine does should move toward
 Reduce p99 API response time below 200ms while maintaining 100% test coverage.
 ```
 
+### Goal Revisions (Pivots)
+
+The mission is a living document — the Goal may change mid-flight when
+evidence says the current bearing is wrong. When you revise the Goal (or
+the metric, or the termination criteria), record it as a pivot so
+convergence evidence stays honest:
+
+```bash
+python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py log \
+  --jsonl odyssey.jsonl --run <next> --pivot \
+  --description "pivoted: latency target met early; new goal = memory ceiling < 512MB"
+```
+
+Convergence checks count only waypoints after the latest pivot —
+pre-pivot measurements say nothing about the new objective. Patience
+budget effectively restarts. Edit MISSION.md's Goal/Metrics/Termination
+sections in the same waypoint, so the document and the data agree.
+
 ### Context (Optional, Human-Edited)
 
 Why this matters. What's the current state. Any background the agent needs.

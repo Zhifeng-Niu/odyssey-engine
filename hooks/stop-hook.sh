@@ -195,10 +195,16 @@ else
 fi
 
 # Read MISSION.md for context.
-# systemMessage is capped at 10,000 chars by Claude Code — truncate hard.
+# MISSION.md is a living document: static sections (Goal/Scope/Metrics/Guard/
+# Termination) live at the top; the evolving record (What's Been Tried, Dead
+# Ends, Ideas Backlog) accretes at the bottom. Inject head + tail so the model
+# sees the setpoint AND the newest learnings. Cap hard (systemMessage ≤10k).
 mission_context=""
 if [[ -f "$mission_file" ]]; then
-  mission_context=$(head -80 "$mission_file" | head -c 3500)
+  mission_context="$(head -44 "$mission_file")
+… (middle omitted — see MISSION.md) …
+$(tail -50 "$mission_file")"
+  mission_context=$(printf '%s' "$mission_context" | head -c 3500)
 fi
 
 # Build actionable continuation prompt with convergence awareness

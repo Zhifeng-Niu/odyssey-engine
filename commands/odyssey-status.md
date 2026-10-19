@@ -1,7 +1,7 @@
 ---
 description: "Show current Odyssey mission status and progress"
 allowed-tools:
-  - "Bash(python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py summary:*)"
+  - "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/odyssey_helper.py summary:*)"
   - "Bash(cat .claude/odyssey.local.md:*)"
   - "Bash(git log:*)"
   - "Bash(git diff:*)"
@@ -18,7 +18,7 @@ Reads state files and presents current mission progress.
 2. Read `MISSION.md` for goal, scope, and "What's Been Tried"
 3. Run helper summary:
    ```bash
-   python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py summary --jsonl odyssey.jsonl
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/odyssey_helper.py summary --jsonl odyssey.jsonl
    ```
 4. Present:
    - Mission name and goal

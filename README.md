@@ -26,11 +26,13 @@ Odyssey handles any iterative task:
 ## Install
 
 ```bash
-# Claude Code — via plugin marketplace
-/plugin install Zhifeng-Niu/odyssey-engine
+# Add the repo as a marketplace, then install (CLI)
+claude plugin marketplace add Zhifeng-Niu/odyssey-engine
+claude plugin install odyssey-engine@odyssey-engine
 
-# Or clone and link
-git clone https://github.com/Zhifeng-Niu/odyssey-engine.git ~/.claude/plugins/odyssey-engine
+# Or inside a Claude Code session
+/plugin marketplace add Zhifeng-Niu/odyssey-engine
+/plugin install odyssey-engine@odyssey-engine
 ```
 
 ## Quick Start
@@ -155,8 +157,8 @@ When facing a "giant" — a task that seems impossible:
 
 ```
 odyssey-engine/
-├── plugin.json              # Plugin manifest
-├── .claude-plugin/          # Claude Code plugin spec
+├── .claude-plugin/          # Plugin spec: plugin.json + marketplace.json
+├── docs/                    # Dev log (iterations.tsv), specs
 ├── skills/odyssey/
 │   ├── SKILL.md             # Core loop definition
 │   └── references/          # Detailed strategies (5 files)

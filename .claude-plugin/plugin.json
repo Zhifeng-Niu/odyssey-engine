@@ -1,6 +1,6 @@
 {
   "name": "odyssey-engine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Universal autonomous iteration engine for any task — code, research, writing, design, data. Three orientations (engineer/creative/production). Metric-driven, git-checkpointed, stop-hook loop.",
   "author": {
     "name": "stbz"

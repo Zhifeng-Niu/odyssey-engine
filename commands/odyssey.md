@@ -1,9 +1,9 @@
 ---
 description: "Start or resume an Odyssey Engine autonomous iteration mission"
 allowed-tools:
-  - "Bash(bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh:*)"
-  - "Bash(python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py:*)"
-  - "Bash(bash $CLAUDE_PLUGIN_ROOT/scripts/sync-cache.sh:*)"
+  - "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup-odyssey.sh:*)"
+  - "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/odyssey_helper.py:*)"
+  - "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/sync-cache.sh:*)"
   - "Bash(git checkout:*)"
   - "Bash(git add:*)"
   - "Bash(git commit:*)"
@@ -40,7 +40,7 @@ Do NOT pass --max-iterations. The loop runs until convergence is detected (objec
 
 1. Run the setup script to initialize:
    ```bash
-   bash $CLAUDE_PLUGIN_ROOT/scripts/setup-odyssey.sh "PROMPT" --orientation ORIENTATION [--tier TIER]
+   bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup-odyssey.sh "PROMPT" --orientation ORIENTATION [--tier TIER]
    ```
    Do NOT add --max-iterations. The loop stops by data-driven convergence detection, not a fixed count.
 
@@ -84,7 +84,7 @@ Follow those instructions exactly. Do NOT ask for permission. Do NOT stop betwee
 1. Update `MISSION.md` frontmatter and "What's Been Tried" sections
 2. Append to `odyssey.jsonl` via helper:
    ```bash
-   python3 $CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py log --jsonl odyssey.jsonl --run N --commit SHA --metric VALUE --status keep/discard --description "what was tried"
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/odyssey_helper.py log --jsonl odyssey.jsonl --run N --commit SHA --metric VALUE --status keep/discard --description "what was tried"
    ```
 3. Commit state files
 4. Continue to next waypoint (stop hook will prevent exit)

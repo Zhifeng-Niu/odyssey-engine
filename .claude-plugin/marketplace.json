@@ -1,0 +1,28 @@
+{
+  "name": "odyssey-engine",
+  "owner": {
+    "name": "Zhifeng-Niu"
+  },
+  "plugins": [
+    {
+      "name": "odyssey-engine",
+      "version": "1.1.0",
+      "description": "Autonomous iteration engine for Claude Code. Three orientations (engineer/creative/production), four convergence tiers, data-driven stopping. Fuses autoresearch + gaggle-iterate + ralph-loop.",
+      "author": {
+        "name": "stbz"
+      },
+      "homepage": "https://github.com/Zhifeng-Niu/odyssey-engine",
+      "repository": "https://github.com/Zhifeng-Niu/odyssey-engine",
+      "license": "MIT",
+      "keywords": [
+        "autonomous-agents",
+        "iteration",
+        "optimization",
+        "research",
+        "experiment-loop"
+      ],
+      "category": "development",
+      "source": "./"
+    }
+  ]
+}

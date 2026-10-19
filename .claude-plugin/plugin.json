@@ -6,10 +6,5 @@
     "name": "stbz"
   },
   "license": "MIT",
-  "skills": ["./skills/"],
-  "commands": ["./commands/"],
-  "agents": [
-    "./agents/odyssey-explorer.md",
-    "./agents/odyssey-critic.md"
-  ]
+  "homepage": "https://github.com/Zhifeng-Niu/odyssey-engine"
 }

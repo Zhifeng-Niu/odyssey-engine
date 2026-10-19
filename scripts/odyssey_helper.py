@@ -7,6 +7,7 @@ odyssey-engine. Uses stdlib only — no external dependencies.
 """
 
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -128,16 +129,31 @@ def detect_project_characteristics(path):
     ]
     test_files_patterns = ["test_*.py", "*_test.go", "*_test.dart", "*.test.ts", "*.test.js", "*.spec.ts", "*.spec.js"]
     has_tests_dir = any((path / t).is_dir() for t in test_indicators)
-    has_test_files = any(path.glob(f"**/{p}") for p in test_files_patterns) if has_tests_dir or True else False
-    # Cheap check: any test file in tree (limit depth to avoid perf hit)
+
+    # Single bounded walk: match test-file patterns by filename anywhere in
+    # the tree. Skips heavy/vendored dirs; stops at first hit or 2000 files.
+    SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".tox", ".mypy_cache"}
+    MAX_TEST_SCAN_FILES = 2000
+    MAX_TEST_SCAN_DEPTH = 8
+
     has_test_files = False
-    for p in test_files_patterns:
-        try:
-            next(path.rglob(p.replace("*", "") if "*" in p else p))
-            has_test_files = True
+    scanned = 0
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        rel = os.path.relpath(root, path)
+        depth = 0 if rel == "." else rel.count(os.sep) + 1
+        if depth >= MAX_TEST_SCAN_DEPTH:
+            dirs[:] = []
+        for fname in files:
+            scanned += 1
+            if any(fnmatch.fnmatch(fname, pat) for pat in test_files_patterns):
+                has_test_files = True
+                break
+            if scanned >= MAX_TEST_SCAN_FILES:
+                break
+        if has_test_files or scanned >= MAX_TEST_SCAN_FILES:
             break
-        except (StopIteration, ValueError):
-            continue
+
     has_tests = has_tests_dir or has_test_files
 
     # CI presence
@@ -265,6 +281,28 @@ def infer_delivery_tier(path, characteristics):
 
     # Prototype: nothing else
     return "prototype"
+
+
+def _detect_guard(path):
+    """Return the guard command for the first matching sentinel.
+
+    Mirrors detect_project's sentinel scan so `profile` and `detect` always
+    agree on tier inference.
+    """
+    path = Path(path)
+    for sentinel in SENTINEL_ORDER:
+        if not (path / sentinel).exists():
+            continue
+        for rule in PROJECT_RULES:
+            if rule[0] != sentinel:
+                continue
+            if rule[1] == "typescript" and not (path / "tsconfig.json").exists():
+                continue
+            if rule[1] == "javascript" and (path / "tsconfig.json").exists():
+                continue
+            return rule[3]
+        break
+    return ""
 
 
 def get_profile(tier):
@@ -513,7 +551,7 @@ def cmd_profile(args):
         # Infer from path
         path = Path(args.path)
         chars = detect_project_characteristics(path)
-        chars_full = {**chars, "guard": ""}
+        chars_full = {**chars, "guard": _detect_guard(path)}
         tier = infer_delivery_tier(path, chars_full)
 
     profile = get_profile(tier)

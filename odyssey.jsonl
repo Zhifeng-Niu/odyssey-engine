@@ -2,3 +2,4 @@
 {"run": 1, "commit": "4362718", "status": "keep", "description": "test suite: 13 tests covering convergence/pivot/drift semantics + stop-hook JSON contract", "timestamp": 1792514359642, "metric": 0.0}
 {"run": 2, "commit": "6bbd3c5", "status": "keep", "description": "score cmd: composite 9.5 (equal to wp1 baseline \u2014 L1/L4 capped; test-bonus parity deferred to wp3); feature delivery per mission Goal", "timestamp": 1792514507214, "metric": 0.0}
 {"run": 3, "commit": "2af2aef", "status": "keep", "description": "crash status + churn stop (5-tail, pre-window) + score test bonus; composite equal-cap 9.5; Goal feature delivered", "timestamp": 1792514669272, "metric": 0.0}
+{"run": 4, "commit": "b9fff05", "status": "keep", "description": "docs: L2 rubric wired to score; dominance matrix (5 autodev strengths absorbed, 5 odyssey-only advantages)", "timestamp": 1792514727856, "metric": 0.0}

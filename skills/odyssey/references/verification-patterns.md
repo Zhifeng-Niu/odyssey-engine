@@ -66,6 +66,26 @@ cargo fmt -- --check
 
 **On failure**: Revert to checkpoint (`git reset --hard HEAD~1`), discard waypoint.
 
+## Layer 2 Alternative: Structured Review (Composite Gates)
+
+For missions running composite scoring (`score` command), Layer 2 is a
+structured self-review of `git diff HEAD~1` — score each dimension 0-2,
+sum to 0-10, feed as `--l2`:
+
+| Dimension | 0 | 1 | 2 |
+|-----------|---|---|---|
+| Correctness | Logic errors present | Mostly correct, minor issues | Does exactly what it claims |
+| Readability | Confusing/unclear | Adequate | Clear, well-structured |
+| Completeness | Missing edge cases | Most cases handled | Edge cases + error paths covered |
+| Consistency | Breaks existing patterns | Mostly consistent | Follows project conventions |
+| Test quality | Tests don't validate real behavior | Basic coverage | Tests validate meaningful behavior |
+
+Weights default `0.30,0.25,0.25,0.20` (build+tests, review, security+perf,
+regression); override per mission in MISSION.md Quality Gate Weights.
+`score` encodes the simplicity criterion: equal composite + fewer lines =
+simplification win. `--tests-added` / `--tests-removed` apply L1/L4
+incentives. `--hard-fail` = build broke, discard regardless.
+
 ## Layer 2: Primary Metric (User-Defined)
 
 Purpose: Measure whether the change moved the needle on the optimization target.

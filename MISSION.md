@@ -61,14 +61,14 @@ echo "no guard defined"
 {Auto-updated by engine.}
 
 ### Surprises
-{Unexpected findings. Auto-updated in creative mode.}
+- wp3: own churn test caught its own ordering bug (churn check was unreachable behind the insufficient-data early return) — the loop's tests are the sharper reviewer.
+- Simplicity criterion cannot see capability expansion once L1/L4 sit at cap 10: equal composite + more lines reads as "discard" for pure feature work. Resolution: mission Goal is the compass for feature keeps; gates guard regressions. Candidate: capability dimension in score.
 
 ## Current Best
 - metric: failing=0 (tests)
 - Baseline: (pending)
 
 ## Ideas Backlog
-- score: add autodev test-count bonus (+1.0 added test, removed-test penalty) to L1/L4 — breaks the composite cap for genuine coverage work
-- crash status + churn stop (5 consecutive crashes = only sanctioned loop stop)
-- verification-patterns.md: structured L2 review rubric (5 dims x 0-2)
+- verification-patterns.md: structured L2 review rubric (5 dims x 0-2) wired to score --l2
 - README: feature matrix odyssey vs autodev (dominance table)
+- capability dimension in score (fix the cap blindness recorded in Surprises)

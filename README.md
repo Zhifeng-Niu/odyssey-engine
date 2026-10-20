@@ -224,6 +224,25 @@ From **autoresearch** specifically: metric-driven evaluation, JSONL experiment t
 > The Odyssey is the story — a long journey home, encountering giants at every turn, each demanding a different strategy.
 > Goliath is embedded within it: a reminder that the smallest stone, thrown with precision at the right moment, can bring down what seemed invincible.
 
+## vs autodev (feature dominance)
+
+odyssey absorbed the genuinely good parts of the autodev pattern — and
+kept its own advantages:
+
+| Capability | autodev | odyssey |
+|------------|---------|---------|
+| Weighted composite quality gates (L1-L4) | ✅ hardcoded | ✅ `score` cmd, weights overridable per mission |
+| Structured L2 review rubric | ✅ | ✅ verification-patterns + `--l2` |
+| Regression layer + test-count incentives | ✅ | ✅ `--tests-added` / `--tests-removed` |
+| Simplicity criterion (equal + fewer lines = win) | ✅ | ✅ encoded in `score` verdicts |
+| Crash protocol, churn stop (5 consecutive) | ✅ | ✅ `--status crash`, `stale`/`churn` verdicts |
+| Task definition | static `program.md` replayed | **living MISSION.md** — goal can pivot mid-flight (evidence re-partitioned) |
+| Stopping criterion | fixed counts + plateau heuristics | **data-driven convergence** (diminishing returns / patience / churn / environment drift) |
+| Human-judgment objectives | — | ✅ `--field content` persona jury + Goodhart guard |
+| Adaptive (game-theoretic) environments | — | ✅ `--field strategy`: Board, anticipation ladder L0-L2, anti-leak keep gate, drift probes |
+| Session capability surface | — | ✅ Arsenal: missions command all skills/agents/LSPs/MCP |
+| Orientation & tier adaptation | — | ✅ 3 orientations × 4 tiers, auto-inferred |
+
 ## License
 
 MIT

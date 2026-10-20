@@ -1,6 +1,6 @@
 ---
 orientation: [engineer]
-status: active
+status: complete
 started_at: 2026-10-20T16:37:17Z
 expedition_branch: odyssey/20261021-003717
 baseline_metric: null

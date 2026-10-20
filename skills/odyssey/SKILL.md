@@ -123,6 +123,44 @@ capability I haven't reached for?*
 MCP tools follow the session's permission settings; if a tool would prompt
 mid-loop, prefer alternatives that keep the mission autonomous.
 
+## Fields — Human & Adversarial Missions
+
+`--field code|content|strategy` (default: `code`) selects the verification
+contract the mission runs under. All fields share the same loop, tiers,
+and convergence engine — only Layers 1–3 and the keep gate differ.
+
+### code (default)
+The standard 4-layer pipeline. Static objective, passive environment.
+
+### content — when the metric is human judgment
+- **Persona jury**: 3 personas score 1–10 each waypoint; median = primary
+  metric, per-persona scores in secondaryMetrics. One persona is always a
+  **media-literate skeptic** who assumes persuasion intent — their score
+  is the authenticity floor.
+- **Fresh-eyes rule**: a persona never sees its own previous scores
+  (anchoring poisons judgment).
+- **Goodhart guard armed**: median climbing while the skeptic stalls
+  below 6 ⇒ discard the waypoint as manipulation, not improvement.
+
+### strategy — when the environment fights back
+- **Board discipline**: MISSION.md `## Board` tracks every party, their
+  interests, last moves, and the column that matters — *their model of
+  us*: what our logged moves taught them about our intentions.
+- **Anticipation ladder**: each waypoint logs the level it played at.
+  L0 — counterpart passive. L1 — counterpart best-responds. L2 —
+  counterpart anticipates that anticipation. The opponent predicts your
+  predictions; when L1 keeps losing, the hypothesis axis is L2:
+  randomize, commit publicly, or withhold information — sometimes the
+  winning move is to be deliberately harder to model.
+- **Anti-leak keep gate**: odyssey-critic attacks before KEEP — the
+  position's strength AND its information leakage ("what does keeping
+  this teach them?"). A metric win that reveals your hand can be a net
+  loss; log the info cost, discard if it leaks a decisive tell.
+- **Drift probes**: every 5 waypoints, re-measure the current best in the
+  live environment (`log --remeasure --metric <new> --was <old>`). In a
+  game, diminishing returns frequently means the counterpart adapted —
+  the engine answers `stale: true` instead of `converged: true`.
+
 ## Convergence Profiles (Adaptive Convergence)
 
 The loop self-terminates based on **objective data**, not agent self-assessment. Each mission gets a ConvergenceProfile based on project type and delivery tier.
@@ -250,6 +288,10 @@ Do NOT stop. Do NOT ask for permission. The stop hook will re-fire after each wa
 5. **No asking for permission mid-loop** — autonomous until user interrupts
 6. **Recap is a progress marker, not a stop** — note what was done, then continue
 7. **Prioritize by impact** — functional integrity > metric improvement > polish
+8. **Goodhart guard** — if the primary metric improves while any tracked
+   secondary degrades >10% (or the skeptic persona stalls), DISCARD and
+   note the reward-hack suspicion: you may be gaming the measure, not
+   moving the goal
 
 ## The Goliath Pattern (Creative Mode)
 

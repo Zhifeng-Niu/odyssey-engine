@@ -16,6 +16,7 @@ TIME_BUDGET=""
 COMPLETION_PROMISE=""
 MISSION_FILE=""
 EXPLICIT_TIER=""
+FIELD="code"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,10 +26,16 @@ while [[ $# -gt 0 ]]; do
     --completion-promise) COMPLETION_PROMISE="$2"; shift 2 ;;
     --mission-file)  MISSION_FILE="$2"; shift 2 ;;
     --tier)          EXPLICIT_TIER="$2"; shift 2 ;;
+    --field)         FIELD="$2"; shift 2 ;;
     --resume)        echo "Resuming existing mission..."; exit 0 ;;
     *)               PROMPT="$1"; shift ;;
   esac
 done
+
+case "$FIELD" in
+  code|content|strategy) ;;
+  *) echo "ERROR: --field must be code|content|strategy (got: $FIELD)"; exit 1 ;;
+esac
 
 # ── Pre-flight Checks ──
 
@@ -187,6 +194,73 @@ fi
 
 echo "Created MISSION.md"
 
+# ── Field-Specific Verification Contracts ──
+# code (default): the 4-layer pipeline as-is. content/strategy append human
+# & adversarial contracts: the objective is judged by people, or the
+# environment adapts to our moves.
+
+case "$FIELD" in
+  content)
+    cat >> MISSION.md <<FIELDEOF
+
+## Field: Content — Human Verification Contract
+
+The metric source is human judgment, proxied by a **persona jury**:
+
+1. At mission start, define 3 personas here: the target reader, a
+   decision-context realist, and one **media-literate skeptic** who
+   assumes persuasion intent and grades accordingly.
+2. Each waypoint, every persona scores the artifact 1-10 on the Goal
+   dimension with a one-line reason. Fresh eyes every time — a persona
+   never sees its own previous scores (anchoring).
+3. Primary metric = median of the jury; log each persona's score in
+   secondaryMetrics.
+4. Proxy honesty: the jury is a proxy for real audience response. If the
+   median climbs while the skeptic stalls below 6, treat it as a Goodhart
+   signal — discard manipulative gains.
+
+## Board
+
+| Stakeholder | What this artifact taught them | Expected reaction |
+|-------------|--------------------------------|-------------------|
+FIELDEOF
+    ;;
+  strategy)
+    cat >> MISSION.md <<FIELDEOF
+
+## Field: Strategy — Adversarial Verification Contract
+
+The environment is adaptive: counterparts update their model of us from
+every move we make. The opponent anticipates our anticipation.
+
+### Anticipation ladder (log the level played in each waypoint)
+- **L0**: best move if the counterpart does not react
+- **L1**: best move given their best response to it
+- **L2**: best move given they anticipate that anticipation — randomize,
+  commit publicly, or withhold information when predictability is the leak
+
+### Keep gate (stricter than the code field)
+Before KEEP, the odyssey-critic attacks the position once: its strength,
+AND what keeping it reveals to counterparts. Log the information cost.
+A waypoint that improves the metric but leaks a decisive tell is a net
+loss — discard it anyway.
+
+### Board (update every waypoint)
+
+| Party | Interests | Last move | Their model of us (what our moves taught them) |
+|-------|-----------|-----------|------------------------------------------------|
+
+### Drift probes (mandatory in this field)
+Every 5 waypoints, re-measure the current best in the live environment:
+
+    python3 ${HELPER} log --jsonl odyssey.jsonl --run <next> --remeasure --metric <new> --was <old>
+
+Diminishing returns in a game often means the counterpart adapted — the
+engine answers \`stale: true\` instead of \`converged: true\`.
+FIELDEOF
+    ;;
+esac
+
 # ── Create Expedition Branch (git only) ──
 
 branch_name="odyssey/$(date +%Y%m%d-%H%M%S)"
@@ -228,6 +302,7 @@ completion_promise: "${COMPLETION_PROMISE}"
 orientation: ${ORIENTATION}
 started_at: ${now}
 mission_file: MISSION.md
+field: ${FIELD}
 consecutive_discards: 0
 delivery_tier: ${delivery_tier}
 patience_budget: ${patience_budget}
@@ -240,6 +315,7 @@ auto_orient_switch: ${auto_orient_switch}
 # Odyssey Mission Active
 
 Orientation: ${ORIENTATION}
+Field: ${FIELD}
 Delivery tier: ${delivery_tier} (patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta}%)
 Max iterations: ${MAX_ITERATIONS:-unlimited}
 Time budget: ${TIME_BUDGET:-none}
@@ -307,6 +383,7 @@ cat <<SUMMARY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Goal:         ${PROMPT}
   Orientation:  ${ORIENTATION}
+  Field:        ${FIELD}
   Project:      ${project_type}
   Tier:         ${delivery_tier} (patience ${patience_budget}, discard_limit ${discard_threshold}, min_delta ${min_metric_delta}%)
   Branch:       ${branch_name:-N/A}

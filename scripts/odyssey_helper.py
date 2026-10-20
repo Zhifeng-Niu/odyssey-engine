@@ -329,11 +329,15 @@ def init_log(args):
 
 
 def log_waypoint(args):
-    """Append a waypoint result (or a pivot marker) to the JSONL log."""
-    if not args.pivot and not args.status:
-        raise SystemExit("odyssey_helper.py log: error: --status is required unless --pivot")
-    if args.pivot and (args.status or args.metric is not None):
-        raise SystemExit("odyssey_helper.py log: error: --pivot cannot be combined with --status/--metric")
+    """Append a waypoint result (or a pivot / remeasure marker) to the JSONL log."""
+    if not args.pivot and not args.remeasure and not args.status:
+        raise SystemExit("odyssey_helper.py log: error: --status is required unless --pivot or --remeasure")
+    if args.pivot and (args.status or args.metric is not None or args.was is not None):
+        raise SystemExit("odyssey_helper.py log: error: --pivot cannot be combined with --status/--metric/--was")
+    if args.remeasure and (args.status or args.metric is None or args.was is None):
+        raise SystemExit("odyssey_helper.py log: error: --remeasure requires --metric <new> --was <old>, and no --status")
+    if args.pivot and args.remeasure:
+        raise SystemExit("odyssey_helper.py log: error: --pivot and --remeasure are mutually exclusive")
 
     timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
     if args.pivot:
@@ -343,6 +347,24 @@ def log_waypoint(args):
             "type": "pivot",
             "run": args.run,
             "description": args.description or "goal revised",
+            "timestamp": timestamp,
+        }
+        with open(args.jsonl, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+        return
+
+    if args.remeasure:
+        # Environment-drift probe: re-measure the CURRENT BEST artifact in
+        # the live environment. In adaptive (game-theoretic) settings the
+        # world moves under you — diminishing returns may mean "the opponent
+        # adapted", not "we are done". convergence-check uses these entries
+        # to distinguish the two.
+        entry = {
+            "run": args.run,
+            "status": "remeasure",
+            "metric": args.metric,
+            "previous": args.was,
+            "description": args.description or "re-measured current best in live environment",
             "timestamp": timestamp,
         }
         with open(args.jsonl, "a") as f:
@@ -515,6 +537,8 @@ def main():
     p_log.add_argument("--secondary-metrics", default=None, help="JSON string of secondary metrics")
     p_log.add_argument("--asi", default=None, help="JSON string or plain text for ASI data")
     p_log.add_argument("--pivot", action="store_true", help="Log a goal revision instead of a waypoint result")
+    p_log.add_argument("--remeasure", action="store_true", help="Log a re-measurement of the current best (environment-drift probe)")
+    p_log.add_argument("--was", type=float, default=None, help="With --remeasure: the previously recorded best value")
 
     # evaluate
     p_eval = sub.add_parser("evaluate", help="Evaluate if a metric is an improvement")
@@ -608,6 +632,12 @@ def cmd_convergence_check(args):
     if pivot_idx:
         entries = entries[pivot_idx[-1] + 1:]
 
+    # Remeasures are drift probes, not waypoints: they neither consume
+    # patience nor count toward trailing discards. They feed the
+    # environment-drift check below.
+    remeasures = [e for e in entries if e.get("status") == "remeasure" and "metric" in e and "previous" in e]
+    entries = [e for e in entries if e.get("status") != "remeasure"]
+
     keeps = [e for e in entries if e.get("status") == "keep" and "metric" in e]
 
     result = {
@@ -617,6 +647,7 @@ def cmd_convergence_check(args):
         "tier": args.tier,
         "window": window,
         "pivots": pivots,
+        "stale": False,
     }
 
     # Not enough data yet
@@ -678,7 +709,40 @@ def cmd_convergence_check(args):
     exhausted = result["evidence"][1]["passed"]
     stuck = result["evidence"][2]["passed"]
 
-    if diminishing:
+    # Environment drift: the latest probe re-measured the current best in
+    # the live world. A significant degradation means the environment moved
+    # (the opponent adapted, the audience fatigued, the market shifted) —
+    # diminishing returns then means "they learned our pattern", NOT "done".
+    drift = False
+    if remeasures:
+        latest = remeasures[-1]
+        sig = max(min_delta * 10.0, 1.0) / 100.0  # significance band: 10x min delta, >=1%
+        new_v, old_v = latest["metric"], latest["previous"]
+        direction = "lower"  # resolved from config below if available
+        config = _read_config(args.jsonl)
+        if config:
+            direction = config.get("bestDirection", "lower")
+        if direction == "lower":
+            drift = new_v > old_v * (1 + sig)
+        else:
+            drift = new_v < old_v * (1 - sig)
+        result["evidence"].append({
+            "check": "environment_drift",
+            "remeasured": new_v,
+            "previous_best": old_v,
+            "significance_pct": round(sig * 100, 3),
+            "passed": drift,
+        })
+
+    if drift:
+        result["converged"] = False
+        result["stale"] = True
+        result["reason"] = (
+            f"environment drift: current best re-measured at {new_v} vs recorded {old_v} "
+            f"(>{round(sig * 100, 3)}% degradation) — the world moved under the mission; "
+            f"re-baseline and reconsider before trusting diminishing returns"
+        )
+    elif diminishing:
         result["converged"] = True
         result["reason"] = f"diminishing returns: avg delta {avg_delta:.3f}% < threshold {min_delta}% over last {window} keeps"
     elif exhausted:

@@ -223,6 +223,7 @@ Execute the next waypoint NOW. Follow these steps in order:
 7. DECIDE:
    - KEEP: if guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins, run: python3 \$CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py reset-discards
    - DISCARD: if any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends (consecutive_discards will increment)
+   - GOODHART GUARD: primary improved while any tracked secondary degraded >10% → DISCARD (suspected metric gaming, note it)
 8. Output a ONE LINE recap, then continue to next waypoint
 
 Profile context: tier=${delivery_tier}, patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta_pct}%, window=${convergence_window}, auto_switch=${auto_orient_switch}

@@ -63,6 +63,19 @@ and records them here; extend as the mission discovers new needs.
 | postgres-patterns | touching schema or slow queries |
 ```
 
+### Board (Strategy Field, Living Section)
+
+For `--field strategy` missions: the adaptive-environment picture. Parties,
+interests, last moves — and *their model of us*: what our logged moves
+taught counterparts about our intentions. Update every waypoint; a move
+that improves the metric but enriches this column dangerously may be a
+net loss (see SKILL.md "Fields — strategy").
+
+```markdown
+## Board
+| Party | Interests | Last move | Their model of us |
+```
+
 ### Context (Optional, Human-Edited)
 
 Why this matters. What's the current state. Any background the agent needs.

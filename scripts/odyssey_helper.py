@@ -493,6 +493,15 @@ def cmd_score(args):
         except ValueError:
             raise SystemExit('odyssey_helper.py score: error: --weights expects 4 comma-separated floats summing to 1.0')
 
+    # Test-count incentives (autodev parity): added tests earn a bonus in
+    # L1 and L4; removed tests penalize L1. Floors and caps at [0, 10].
+    if args.tests_added:
+        layers["l1"] = min(10.0, layers["l1"] + 1.0)
+        layers["l4"] = min(10.0, layers["l4"] + 1.0)
+    if args.tests_removed:
+        layers["l1"] = max(0.0, layers["l1"] - 1.0 * args.tests_removed)
+    layers = {k: round(v, 2) for k, v in layers.items()}
+
     composite = round(sum(layers[k] * weights[k] for k in layers), 2)
     baseline = round(args.baseline, 2)
 
@@ -591,7 +600,7 @@ def main():
     p_log.add_argument("--run", type=int, required=True, help="Waypoint number")
     p_log.add_argument("--commit", default=None, help="Git commit SHA")
     p_log.add_argument("--metric", type=float, default=None, help="Metric value")
-    p_log.add_argument("--status", default=None, choices=["keep", "discard"], help="Result status (required unless --pivot)")
+    p_log.add_argument("--status", default=None, choices=["keep", "discard", "crash"], help="Result status (required unless --pivot or --remeasure)")
     p_log.add_argument("--description", default="", help="What was tried")
     p_log.add_argument("--secondary-metrics", default=None, help="JSON string of secondary metrics")
     p_log.add_argument("--asi", default=None, help="JSON string or plain text for ASI data")
@@ -629,6 +638,8 @@ def main():
     p_score.add_argument("--l4", type=float, required=True, help="L4 regression 0-10")
     p_score.add_argument("--lines", type=int, required=True, help="Net line delta of the change")
     p_score.add_argument("--baseline", type=float, required=True, help="Previous best composite")
+    p_score.add_argument("--tests-added", type=int, default=0, help="Test files added this waypoint (L1/L4 bonus)")
+    p_score.add_argument("--tests-removed", type=int, default=0, help="Test files removed this waypoint (L1 penalty)")
     p_score.add_argument("--weights", default=None, help='Comma weights l1,l2,l3,l4 summing to 1.0 (default 0.30,0.25,0.25,0.20)')
     p_score.add_argument("--hard-fail", action="store_true", help="Build failed — hard gate overrides everything")
 
@@ -722,8 +733,36 @@ def cmd_convergence_check(args):
         "stale": False,
     }
 
+    # Churn: consecutive crashes at the tail. Evaluated BEFORE the
+    # insufficient-data window check — a crash streak is the loop melting
+    # down regardless of how many keeps exist. The single sanctioned stop
+    # besides convergence: endlessly retrying the same failure is worse
+    # than reporting back to the human.
+    CHURN_LIMIT = 5
+    trailing_crashes = 0
+    for e in reversed(entries):
+        if e.get("status") == "crash":
+            trailing_crashes += 1
+        else:
+            break
+    churn = trailing_crashes >= CHURN_LIMIT
+    result["evidence"].append({
+        "check": "churn",
+        "count": trailing_crashes,
+        "threshold": CHURN_LIMIT,
+        "passed": churn,
+    })
+
     # Not enough data yet
     if len(kills_check := keeps) < window:
+        if churn:
+            result["converged"] = True
+            result["reason"] = (
+                f"churn: {trailing_crashes} consecutive crashes (limit {CHURN_LIMIT}) — "
+                f"stop and report to the human; do not retry the same approach"
+            )
+            print(json.dumps(result, indent=2))
+            return
         result["reason"] = f"insufficient data ({len(kills_check)}/{window} keeps needed)"
         if pivots:
             result["reason"] += f" since last of {pivots} pivot(s)"
@@ -777,6 +816,8 @@ def cmd_convergence_check(args):
     })
 
     # Converged if diminishing returns hit OR patience exhausted
+    # (indices into result["evidence"]: 0 diminishing, 1 patience,
+    # 2 trailing_discards, 3 churn, then optional environment_drift)
     diminishing = result["evidence"][0]["passed"]
     exhausted = result["evidence"][1]["passed"]
     stuck = result["evidence"][2]["passed"]
@@ -806,7 +847,13 @@ def cmd_convergence_check(args):
             "passed": drift,
         })
 
-    if drift:
+    if churn:
+        result["converged"] = True
+        result["reason"] = (
+            f"churn: {trailing_crashes} consecutive crashes (limit {CHURN_LIMIT}) — "
+            f"stop and report to the human; do not retry the same approach"
+        )
+    elif drift:
         result["converged"] = False
         result["stale"] = True
         result["reason"] = (

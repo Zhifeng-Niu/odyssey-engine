@@ -55,6 +55,7 @@ echo "no guard defined"
 
 ### Wins
 - wp1: 13-test suite (convergence/pivot/drift/hook-contract) — failing=0. Regression net for all later waypoints.
+- wp2: `score` cmd — weighted L1-L4, simplicity criterion, hard-fail. Composite 9.5 (parity cap: no test bonus yet).
 
 ### Dead Ends
 {Auto-updated by engine.}
@@ -67,4 +68,7 @@ echo "no guard defined"
 - Baseline: (pending)
 
 ## Ideas Backlog
-{Auto-populated. Can be manually edited.}
+- score: add autodev test-count bonus (+1.0 added test, removed-test penalty) to L1/L4 — breaks the composite cap for genuine coverage work
+- crash status + churn stop (5 consecutive crashes = only sanctioned loop stop)
+- verification-patterns.md: structured L2 review rubric (5 dims x 0-2)
+- README: feature matrix odyssey vs autodev (dominance table)

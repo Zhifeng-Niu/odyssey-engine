@@ -54,7 +54,7 @@ echo "no guard defined"
 ## What's Been Tried
 
 ### Wins
-{Auto-updated by engine.}
+- wp1: 13-test suite (convergence/pivot/drift/hook-contract) — failing=0. Regression net for all later waypoints.
 
 ### Dead Ends
 {Auto-updated by engine.}
@@ -63,7 +63,7 @@ echo "no guard defined"
 {Unexpected findings. Auto-updated in creative mode.}
 
 ## Current Best
-- metric: (baseline not yet measured)
+- metric: failing=0 (tests)
 - Baseline: (pending)
 
 ## Ideas Backlog

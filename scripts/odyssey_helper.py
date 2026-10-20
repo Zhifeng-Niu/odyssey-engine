@@ -456,6 +456,65 @@ def status_log(args):
     summary_log(args)
 
 
+# ── Composite Scoring (quality gates, autodev-style) ──
+
+DEFAULT_WEIGHTS = {"l1": 0.30, "l2": 0.25, "l3": 0.25, "l4": 0.20}
+
+
+def cmd_score(args):
+    """Score a waypoint across weighted quality-gate layers.
+
+    L1 build+tests, L2 structured review, L3 security+performance,
+    L4 regression — each 0-10. Encodes the simplicity criterion:
+    equal composite + fewer lines = simplification win (keep);
+    equal composite + more lines = discard.
+    """
+    if args.hard_fail:
+        print(json.dumps({
+            "composite": 0.0,
+            "verdict": "hard-fail",
+            "reason": "build failed — hard gate, discard regardless of other layers",
+            "weights": DEFAULT_WEIGHTS,
+        }))
+        return
+
+    layers = {"l1": args.l1, "l2": args.l2, "l3": args.l3, "l4": args.l4}
+    for name, value in layers.items():
+        if not 0.0 <= value <= 10.0:
+            raise SystemExit(f"odyssey_helper.py score: error: --{name} must be within 0-10 (got {value})")
+
+    weights = dict(DEFAULT_WEIGHTS)
+    if args.weights:
+        try:
+            parts = [float(w) for w in args.weights.split(",")]
+            if len(parts) != 4 or abs(sum(parts) - 1.0) > 0.001:
+                raise ValueError
+            weights = dict(zip(("l1", "l2", "l3", "l4"), parts))
+        except ValueError:
+            raise SystemExit('odyssey_helper.py score: error: --weights expects 4 comma-separated floats summing to 1.0')
+
+    composite = round(sum(layers[k] * weights[k] for k in layers), 2)
+    baseline = round(args.baseline, 2)
+
+    if composite > baseline:
+        verdict, reason = "keep", f"composite {composite} > baseline {baseline}"
+    elif composite < baseline:
+        verdict, reason = "discard", f"composite {composite} < baseline {baseline}"
+    elif args.lines < 0:
+        verdict, reason = "keep", f"composite equal at {composite} with {args.lines} lines — simplification win"
+    else:
+        verdict, reason = "discard", f"composite equal at {composite} with {args.lines:+d} lines — complexity without gain"
+
+    print(json.dumps({
+        "composite": composite,
+        "verdict": verdict,
+        "reason": reason,
+        "weights": weights,
+        "layers": layers,
+        "lines_delta": args.lines,
+    }))
+
+
 # ── Helpers ──
 
 def _read_config(jsonl_path):
@@ -562,6 +621,17 @@ def main():
     p_status = sub.add_parser("status", help="Print current status")
     p_status.add_argument("--jsonl", required=True, help="JSONL file path")
 
+    # score (composite quality gates)
+    p_score = sub.add_parser("score", help="Composite quality-gate score + keep/discard verdict")
+    p_score.add_argument("--l1", type=float, required=True, help="L1 build+tests 0-10")
+    p_score.add_argument("--l2", type=float, required=True, help="L2 structured review 0-10")
+    p_score.add_argument("--l3", type=float, required=True, help="L3 security+performance 0-10")
+    p_score.add_argument("--l4", type=float, required=True, help="L4 regression 0-10")
+    p_score.add_argument("--lines", type=int, required=True, help="Net line delta of the change")
+    p_score.add_argument("--baseline", type=float, required=True, help="Previous best composite")
+    p_score.add_argument("--weights", default=None, help='Comma weights l1,l2,l3,l4 summing to 1.0 (default 0.30,0.25,0.25,0.20)')
+    p_score.add_argument("--hard-fail", action="store_true", help="Build failed — hard gate overrides everything")
+
     args = parser.parse_args()
     if args.command == "detect":
         detect_project(args.path)
@@ -581,6 +651,8 @@ def main():
         summary_log(args)
     elif args.command == "status":
         status_log(args)
+    elif args.command == "score":
+        cmd_score(args)
     else:
         parser.print_help()
 

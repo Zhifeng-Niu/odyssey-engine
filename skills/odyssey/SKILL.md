@@ -161,6 +161,33 @@ The standard 4-layer pipeline. Static objective, passive environment.
   game, diminishing returns frequently means the counterpart adapted —
   the engine answers `stale: true` instead of `converged: true`.
 
+## Model-Adaptive Harness — the Amplifier Theorem
+
+The same model performs differently under different harnesses. Odyssey's
+mission: **raise the capability floor** — a non-flagship model under this
+harness should outperform a flagship model under none.
+
+Progress = attempts × keep-rate × average gain of kept waypoints. The
+engine tunes all three per model class (`--model-class`, stored in state,
+scales waypoint-prompt density):
+
+| Class | Weakness externalized | Harness behavior |
+|-------|----------------------|------------------|
+| `compact` | gives up early, hallucinates "done", drifts across steps, batches recklessly | Full scaffold + micro-discipline: smallest-step rule, edit→verify after EVERY edit, two-strikes-then-switch, deterministic compass over creative |
+| `standard` | uneven long-horizon coherence | Full 8-step waypoint prompt (the default loop) |
+| `flagship` | token-thrifty over-scaffolding wastes capability | Terse brief: counters + one-line directive; model re-derives procedure |
+
+**Compass granularity per class** (agent-side, from MISSION.md state):
+- `compact`: single-file/single-function hypotheses only; deterministic
+  compass (backlog order by confidence, no open-ended divergence); Arsenal
+  suggestions preferred over invention
+- `standard`: normal loop
+- `flagship`: may batch tightly-related edits into one waypoint; creative
+  divergence encouraged
+
+Cheap attempts are safe attempts — with `compact`, prefer patience-heavy
+tiers and accept smaller deltas (verification filters; volume is free).
+
 ## Convergence Profiles (Adaptive Convergence)
 
 The loop self-terminates based on **objective data**, not agent self-assessment. Each mission gets a ConvergenceProfile based on project type and delivery tier.

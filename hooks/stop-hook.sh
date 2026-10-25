@@ -64,6 +64,7 @@ discard_threshold=$(get_fm_value "discard_threshold" || echo "10")
 min_metric_delta_pct=$(get_fm_value "min_metric_delta_pct" || echo "0.5")
 convergence_window=$(get_fm_value "convergence_window" || echo "5")
 auto_orient_switch=$(get_fm_value "auto_orient_switch" || echo "true")
+model_class=$(get_fm_value "model_class" || echo "standard")
 
 # Validate numeric fields
 iteration=${iteration:-0}
@@ -207,10 +208,44 @@ $(tail -50 "$mission_file")"
   mission_context=$(printf '%s' "$mission_context" | head -c 3500)
 fi
 
-# Build actionable continuation prompt with convergence awareness
-emit_json "block" \
-  "odyssey waypoint ${new_iteration}" \
-  "ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | tier: ${delivery_tier} | discards: ${consecutive_discards}/${discard_threshold} | patience: ${iteration}/${patience_budget}
+# Build actionable continuation prompt — density scales with model class
+# (the amplifier theorem: strong models need terse briefs, weak models
+# need scaffolding; both serve the same loop).
+case "$model_class" in
+  flagship)
+    wp_message="ODYSSEY WAYPOINT ${new_iteration} | ${orientation} | tier ${delivery_tier} | discards ${consecutive_discards}/${discard_threshold} | patience ${iteration}/${patience_budget}
+
+Next hypothesis from MISSION.md backlog (check Arsenal for unused capabilities). Checkpoint → implement → verify (syntax→guard→metric) → keep/discard via odyssey_helper → one-line recap. Continue."
+    ;;
+  compact)
+    wp_message="ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | tier: ${delivery_tier} | discards: ${consecutive_discards}/${discard_threshold} | patience: ${iteration}/${patience_budget}
+
+DISCIPLINE (follow exactly):
+- Work in the SMALLEST possible step: one file or one function per change. Never batch multiple changes.
+- After EACH edit, run the verification command. Edit → verify, edit → verify.
+- If the same step fails twice, log a discard and pick a DIFFERENT hypothesis — do not keep pushing the same failing edit.
+
+Execute the next waypoint NOW. Steps in order:
+
+1. git add -A && git commit -m \"waypoint-${new_iteration}: checkpoint\"
+2. Read MISSION.md section \"What's Been Tried\" to avoid repeating
+3. Pick ONE hypothesis from the Ideas Backlog (one you have NOT tried; an unused tool, skill, or agent counts too — see MISSION.md Arsenal)
+4. Implement the change (ONE focused idea, smallest step)
+5. Run verification: syntax check → guard command → metric
+6. DECIDE:
+   - KEEP: guards pass and metric improved → commit, log to odyssey.jsonl, update MISSION.md Wins, run: python3 \$CLAUDE_PLUGIN_ROOT/scripts/odyssey_helper.py reset-discards
+   - DISCARD: any guard fails → git reset --hard HEAD~1, log to odyssey.jsonl, update MISSION.md Dead Ends
+   - GOODHART GUARD: primary improved while a secondary degraded >10% → DISCARD
+7. ONE LINE recap, then continue
+
+Do NOT stop. Do NOT ask for permission. Do NOT batch changes.
+
+---
+MISSION CONTEXT:
+${mission_context}"
+    ;;
+  *)
+    wp_message="ODYSSEY WAYPOINT ${new_iteration} | ${orientation} mode | tier: ${delivery_tier} | discards: ${consecutive_discards}/${discard_threshold} | patience: ${iteration}/${patience_budget}
 
 Execute the next waypoint NOW. Follow these steps in order:
 
@@ -235,5 +270,11 @@ When you judge the task is complete (no more meaningful improvements possible), 
 ---
 MISSION CONTEXT:
 ${mission_context}"
+    ;;
+esac
+
+emit_json "block" \
+  "odyssey waypoint ${new_iteration}" \
+  "${wp_message}"
 
 exit 2

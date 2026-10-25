@@ -4,6 +4,14 @@ Universal autonomous iteration engine. For any task that benefits from structure
 
 **Fuses**: autoresearch (metric-driven experiments) + gaggle-iterate (checkpoint/verify/rollback) + ralph-loop (continuous execution).
 
+> **The amplifier theorem**: the same model performs differently under
+> different harnesses. Odyssey's mission is to raise the capability floor —
+> a non-flagship model under this harness should outperform a flagship
+> model under none. Persistence, honest self-assessment, and procedure are
+> **externalized** (stop hook, data-driven convergence, waypoint
+> scaffolding) so agent value becomes a property of the *system*, not the
+> model alone. See [docs/model-adaptive-harness.md](docs/model-adaptive-harness.md).
+
 ## What It Does
 
 Odyssey Engine runs autonomous iteration loops that adapt strategy to the task at hand — not just code, but anything you can measure and iterate on:

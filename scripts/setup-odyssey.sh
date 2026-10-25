@@ -17,6 +17,7 @@ COMPLETION_PROMISE=""
 MISSION_FILE=""
 EXPLICIT_TIER=""
 FIELD="code"
+MODEL_CLASS="standard"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -27,6 +28,7 @@ while [[ $# -gt 0 ]]; do
     --mission-file)  MISSION_FILE="$2"; shift 2 ;;
     --tier)          EXPLICIT_TIER="$2"; shift 2 ;;
     --field)         FIELD="$2"; shift 2 ;;
+    --model-class)   MODEL_CLASS="$2"; shift 2 ;;
     --resume)        echo "Resuming existing mission..."; exit 0 ;;
     *)               PROMPT="$1"; shift ;;
   esac
@@ -35,6 +37,11 @@ done
 case "$FIELD" in
   code|content|strategy) ;;
   *) echo "ERROR: --field must be code|content|strategy (got: $FIELD)"; exit 1 ;;
+esac
+
+case "$MODEL_CLASS" in
+  flagship|standard|compact) ;;
+  *) echo "ERROR: --model-class must be flagship|standard|compact (got: $MODEL_CLASS)"; exit 1 ;;
 esac
 
 # ── Pre-flight Checks ──
@@ -303,6 +310,7 @@ orientation: ${ORIENTATION}
 started_at: ${now}
 mission_file: MISSION.md
 field: ${FIELD}
+model_class: ${MODEL_CLASS}
 consecutive_discards: 0
 delivery_tier: ${delivery_tier}
 patience_budget: ${patience_budget}
@@ -316,6 +324,7 @@ auto_orient_switch: ${auto_orient_switch}
 
 Orientation: ${ORIENTATION}
 Field: ${FIELD}
+Model class: ${MODEL_CLASS}
 Delivery tier: ${delivery_tier} (patience=${patience_budget}, discard_limit=${discard_threshold}, min_delta=${min_metric_delta}%)
 Max iterations: ${MAX_ITERATIONS:-unlimited}
 Time budget: ${TIME_BUDGET:-none}
@@ -384,6 +393,7 @@ cat <<SUMMARY
   Goal:         ${PROMPT}
   Orientation:  ${ORIENTATION}
   Field:        ${FIELD}
+  Model class:  ${MODEL_CLASS}
   Project:      ${project_type}
   Tier:         ${delivery_tier} (patience ${patience_budget}, discard_limit ${discard_threshold}, min_delta ${min_metric_delta}%)
   Branch:       ${branch_name:-N/A}

@@ -31,7 +31,7 @@ allowed-tools:
 ## Arguments
 
 ```
-/odyssey PROMPT [--orientation engineer|creative|production] [--field code|content|strategy] [--time-budget 30m|2h] [--completion-promise TEXT] [--tier prototype|standard|production|research]
+/odyssey PROMPT [--orientation engineer|creative|production] [--field code|content|strategy] [--model-class flagship|standard|compact] [--time-budget 30m|2h] [--completion-promise TEXT] [--tier prototype|standard|production|research]
 /odyssey --resume
 /odyssey --mission-file PATH
 ```

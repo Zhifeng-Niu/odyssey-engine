@@ -9,6 +9,10 @@
 # No iteration limit — like ralph-loop, it runs until the work is done.
 set -euo pipefail
 
+# UTF-8 guard: BSD sed/errors under C locale on multibyte content.
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
 # Fallback for CLAUDE_PLUGIN_ROOT when running outside Claude Code
 # (e.g. debugging, manual invocation). Claude Code injects this normally.
 if [[ -z "${CLAUDE_PLUGIN_ROOT:-}" ]]; then

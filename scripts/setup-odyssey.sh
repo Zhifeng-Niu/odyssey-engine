@@ -3,6 +3,12 @@
 # Initializes mission state, detects project type, creates MISSION.md and expedition branch.
 set -euo pipefail
 
+# UTF-8 guard: BSD sed errors with "RE error: illegal byte sequence" on
+# multibyte content under a C locale (Claude Code tool shells vary). Pin
+# the locale AND keep user content out of sed programs (python below).
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HELPER="$SCRIPT_DIR/odyssey_helper.py"
 STATE_FILE=".claude/odyssey.local.md"
@@ -120,17 +126,26 @@ else
 
   TEMPLATE_PATH="$SCRIPT_DIR/../templates/MISSION.md.template"
   if [[ -f "$TEMPLATE_PATH" ]]; then
-    # Use template with token substitution (single source of truth)
-    sed \
-      -e "s|{{ORIENTATION}}|${ORIENTATION}|g" \
-      -e "s|{{NOW}}|${now}|g" \
-      -e "s|{{TITLE}}|${mission_title}|g" \
-      -e "s|{{PROMPT}}|${PROMPT}|g" \
-      -e "s|{{PROJECT_TYPE}}|${project_type}|g" \
-      -e "s|{{GUARD_DESC}}|${guard_desc}|g" \
-      -e "s|{{GUARD_CMD}}|${guard_inline}|g" \
-      -e "s|{{DEFAULT_METRIC}}|${default_metric}|g" \
-      "$TEMPLATE_PATH" > "MISSION.md"
+    # Token substitution via python (single source of truth). NEVER route
+    # user content through sed: delimiters in the prompt (|, /, &) break
+    # the program, and non-UTF-8 locales break multibyte bytes.
+    mission_title=$(echo "$PROMPT" | head -c 80)
+    python3 - "$TEMPLATE_PATH" "MISSION.md" \
+      "$ORIENTATION" "$now" "$PROMPT" \
+      "$project_type" "$guard_desc" "$guard_inline" "$default_metric" <<'PY'
+import sys
+src, dst, orientation, now, prompt, project_type, guard_desc, guard_cmd, default_metric = sys.argv[1:10]
+title = prompt[:80]  # by characters, not bytes — multibyte-safe
+text = open(src, encoding="utf-8").read()
+for key, val in (
+    ("ORIENTATION", orientation), ("NOW", now), ("TITLE", title),
+    ("PROMPT", prompt), ("PROJECT_TYPE", project_type),
+    ("GUARD_DESC", guard_desc), ("GUARD_CMD", guard_cmd),
+    ("DEFAULT_METRIC", default_metric),
+):
+    text = text.replace("{{" + key + "}}", val)
+open(dst, "w", encoding="utf-8").write(text)
+PY
   else
     # Fallback: inline heredoc (kept for resilience if template removed)
     cat > "MISSION.md" <<MISSIONEOF
@@ -273,12 +288,16 @@ esac
 branch_name="odyssey/$(date +%Y%m%d-%H%M%S)"
 if [[ -d ".git" ]]; then
   git checkout -b "$branch_name" 2>/dev/null || true
-  # Update MISSION.md frontmatter with branch name
-  if [[ "$(uname)" == "Darwin" ]]; then
-    sed -i '' "s|^expedition_branch:.*|expedition_branch: ${branch_name}|" "MISSION.md"
-  else
-    sed -i "s|^expedition_branch:.*|expedition_branch: ${branch_name}|" "MISSION.md"
-  fi
+  # Update MISSION.md frontmatter with branch name (python: the file may
+  # contain multibyte content; never sed user files)
+  python3 -c "
+import sys
+p = 'MISSION.md'
+text = open(p, encoding='utf-8').read()
+import re
+text = re.sub(r'^expedition_branch:.*$', 'expedition_branch: ${branch_name}', text, count=1, flags=re.MULTILINE)
+open(p, 'w', encoding='utf-8').write(text)
+"
   echo "Created expedition branch: $branch_name"
 else
   echo "Skipping branch creation (not a git repo)."

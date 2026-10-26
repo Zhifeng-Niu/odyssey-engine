@@ -540,7 +540,7 @@ def cmd_validate(args):
     if not path.exists():
         print(json.dumps({"valid": False, "errors": [f"file not found: {path}"], "warnings": []}))
         return
-    text = path.read_text(encoding="utf-8")
+    text = _read_text(path)
 
     if not text.lstrip().startswith("---"):
         errors.append("missing frontmatter (must start with ---)")
@@ -578,10 +578,24 @@ def cmd_validate(args):
 
 # ── Helpers ──
 
+
+def _read_text(path):
+    """Read a file tolerating non-UTF-8 historical bytes (GBK-era content,
+    mojibake from broken-locale sessions). Decode chain: utf-8 → gb18030 →
+    latin-1. Writers always normalize back to UTF-8."""
+    with open(path, "rb") as f:
+        raw = f.read()
+    for enc in ("utf-8", "gb18030", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", "replace")
+
 def _read_config(jsonl_path):
     """Read the config header from a JSONL file."""
     try:
-        with open(jsonl_path) as f:
+        with open(jsonl_path, encoding="utf-8", errors="replace") as f:
             first_line = f.readline().strip()
             entry = json.loads(first_line)
             if entry.get("type") == "config":
@@ -595,7 +609,7 @@ def _read_entries(jsonl_path):
     """Read all waypoint entries from a JSONL file."""
     entries = []
     try:
-        with open(jsonl_path) as f:
+        with open(jsonl_path, encoding="utf-8", errors="replace") as f:
             for line in f:
                 line = line.strip()
                 if not line:

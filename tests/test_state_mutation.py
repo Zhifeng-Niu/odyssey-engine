@@ -117,5 +117,27 @@ class StateMutationTests(unittest.TestCase):
         self.assertIn("consecutive_discards: 0", state)
 
 
+    def test_gbk_state_file_survives(self):
+        """Real-world v1.5.4 case: state file containing GBK-encoded bytes
+        (from a broken-locale session or GBK editor) crashed set_state with
+        UnicodeDecodeError. Decode chain must survive and normalize."""
+        self.write_state(iteration=3, discards=0)
+        self.hook_log([(1, 100.0), (2, 90.0)])
+        state_path = self.dir / ".claude" / "odyssey.local.md"
+        text = state_path.read_text(encoding="utf-8")
+        # inject GBK-encoded Chinese into the mission prompt section
+        gbk_bytes = "工厂布局：竞标价阶梯".encode("gbk")
+        raw = state_path.read_bytes()
+        state_path.write_bytes(raw + b"\n" + gbk_bytes)
+        proc = self.run_hook_c_locale()
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertNotIn("UnicodeDecodeError", proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["decision"], "block")
+        # state was normalized back to valid UTF-8
+        state_path.read_text(encoding="utf-8")
+        self.assertIn("iteration: 4", state_path.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

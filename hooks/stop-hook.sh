@@ -28,10 +28,14 @@ export CLAUDE_PLUGIN_ROOT
 emit_json() {
   python3 - "$1" "$2" "$3" <<'PY'
 import json, sys
+def sane(s):
+    # argv may arrive with surrogateescape'd invalid bytes; never let
+    # them crash the hook — replace, the loop must survive
+    return s.encode("utf-8", "replace").decode("utf-8")
 print(json.dumps({
-    "decision": sys.argv[1],
-    "reason": sys.argv[2],
-    "systemMessage": sys.argv[3],
+    "decision": sane(sys.argv[1]),
+    "reason": sane(sys.argv[2]),
+    "systemMessage": sane(sys.argv[3]),
 }))
 PY
 }
@@ -42,7 +46,13 @@ set_state() {
   python3 - "$STATE_FILE" "$1" "$2" <<'PY'
 import re, sys
 path, key, val = sys.argv[1:4]
-text = open(path, encoding="utf-8").read()
+raw = open(path, "rb").read()
+for enc in ("utf-8", "gb18030", "latin-1"):
+    try:
+        text = raw.decode(enc)
+        break
+    except UnicodeDecodeError:
+        continue
 if re.search(rf"^{re.escape(key)}:.*$", text, flags=re.M):
     text = re.sub(rf"^{re.escape(key)}:.*$", f"{key}: {val}", text, count=1, flags=re.M)
 else:

@@ -35,6 +35,22 @@ print(json.dumps({
 }))
 PY
 }
+# Mutate one frontmatter key in the state file. The state file embeds the
+# mission prompt (multibyte by design) — never route user files through
+# sed; python with explicit UTF-8 is deterministic across locales and OSes.
+set_state() {
+  python3 - "$STATE_FILE" "$1" "$2" <<'PY'
+import re, sys
+path, key, val = sys.argv[1:4]
+text = open(path, encoding="utf-8").read()
+if re.search(rf"^{re.escape(key)}:.*$", text, flags=re.M):
+    text = re.sub(rf"^{re.escape(key)}:.*$", f"{key}: {val}", text, count=1, flags=re.M)
+else:
+    # upsert: key absent from frontmatter — insert before the closing "---"
+    text = text.replace("\n---\n", f"\n{key}: {val}\n---\n", 1)
+open(path, "w", encoding="utf-8").write(text)
+PY
+}
 
 STATE_FILE=".claude/odyssey.local.md"
 
@@ -79,13 +95,8 @@ discard_threshold=${discard_threshold:-10}
 # Helper: deactivate mission and allow exit
 deactivate() {
   local reason="$1"
-  if [[ "$(uname)" == "Darwin" ]]; then
-    sed -i '' 's/^active:.*/active: false/' "$STATE_FILE"
-    sed -i '' 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
-  else
-    sed -i 's/^active:.*/active: false/' "$STATE_FILE"
-    sed -i 's/^completed_at:.*/completed_at: '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'/' "$STATE_FILE"
-  fi
+  set_state active false
+  set_state completed_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   emit_json "allow" "$reason" ""
   exit 0
 }
@@ -159,13 +170,8 @@ if [[ "$consecutive_discards" -ge "$discard_threshold" ]]; then
       production) next_orient="engineer" ;;
       *)         next_orient="creative" ;;
     esac
-    if [[ "$(uname)" == "Darwin" ]]; then
-      sed -i '' "s/^orientation:.*/orientation: ${next_orient}/" "$STATE_FILE"
-      sed -i '' "s/^consecutive_discards:.*/consecutive_discards: 0/" "$STATE_FILE"
-    else
-      sed -i "s/^orientation:.*/orientation: ${next_orient}/" "$STATE_FILE"
-      sed -i "s/^consecutive_discards:.*/consecutive_discards: 0/" "$STATE_FILE"
-    fi
+    set_state orientation "$next_orient"
+    set_state consecutive_discards 0
     emit_json "block" \
       "stuck: ${consecutive_discards} consecutive discards (tier ${delivery_tier} threshold ${discard_threshold}) — auto-switched to ${next_orient}" \
       "ODYSSEY STUCK → AUTO-SWITCH (already applied)
@@ -193,11 +199,7 @@ fi
 
 # Increment iteration
 new_iteration=$((iteration + 1))
-if [[ "$(uname)" == "Darwin" ]]; then
-  sed -i '' "s/^iteration:.*/iteration: ${new_iteration}/" "$STATE_FILE"
-else
-  sed -i "s/^iteration:.*/iteration: ${new_iteration}/" "$STATE_FILE"
-fi
+set_state iteration "$new_iteration"
 
 # Read MISSION.md for context.
 # MISSION.md is a living document: static sections (Goal/Scope/Metrics/Guard/

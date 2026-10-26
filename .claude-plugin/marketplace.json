@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "odyssey-engine",
-      "version": "1.5.1",
+      "version": "1.5.2",
       "description": "Autonomous iteration engine for Claude Code. Three orientations (engineer/creative/production), four convergence tiers, data-driven stopping. Fuses autoresearch + gaggle-iterate + ralph-loop.",
       "author": {
         "name": "stbz"

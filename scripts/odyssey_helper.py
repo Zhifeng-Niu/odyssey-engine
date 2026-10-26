@@ -524,6 +524,58 @@ def cmd_score(args):
     }))
 
 
+# ── Mission Grammar Validation ──
+# MISSION.md IS a language — constrained natural language, parsed
+# mechanically. `validate` is its grammar checker: no new syntax, just
+# the difference between a language and a prayer.
+
+REQUIRED_SECTIONS = ["Goal", "Metrics", "Guard", "Termination",
+                     "What's Been Tried", "Ideas Backlog"]
+
+
+def cmd_validate(args):
+    """Mechanically check a MISSION.md against the mission grammar."""
+    errors, warnings = [], []
+    path = Path(args.mission)
+    if not path.exists():
+        print(json.dumps({"valid": False, "errors": [f"file not found: {path}"], "warnings": []}))
+        return
+    text = path.read_text(encoding="utf-8")
+
+    if not text.lstrip().startswith("---"):
+        errors.append("missing frontmatter (must start with ---)")
+        fm = ""
+    else:
+        fm = text.split("---", 2)[1]
+        for key in ("orientation", "status", "started_at"):
+            if not re.search(rf"^{key}:", fm, flags=re.M):
+                errors.append(f"frontmatter missing: {key}")
+
+    for section in REQUIRED_SECTIONS:
+        if not re.search(rf"^## {re.escape(section)}", text, flags=re.M):
+            errors.append(f"missing section: ## {section}")
+
+    if re.search(r"^## Metrics", text, flags=re.M) and not re.search(r"^## Metrics\n[^|]*\|", text, flags=re.M):
+        warnings.append("Metrics section has no table rows (| ... |)")
+
+    guard_ok = re.search(r"^## Guard\s*\n+```", text, flags=re.M)
+    if not guard_ok:
+        errors.append("Guard section needs a ```bash fenced command block")
+
+    if re.search(r"^field:\s*strategy", fm, flags=re.M):
+        if "## Board" not in text:
+            warnings.append("strategy field: Board section absent (compass needs it)")
+    if "skeptic" in text.lower() and "## Arsenal" not in text:
+        warnings.append("Arsenal section absent — mission cannot activate capabilities")
+
+    print(json.dumps({
+        "valid": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "sections": len(re.findall(r"^## ", text, flags=re.M)),
+    }, indent=2))
+
+
 # ── Helpers ──
 
 def _read_config(jsonl_path):
@@ -630,6 +682,10 @@ def main():
     p_status = sub.add_parser("status", help="Print current status")
     p_status.add_argument("--jsonl", required=True, help="JSONL file path")
 
+    # validate (mission grammar)
+    p_val = sub.add_parser("validate", help="Mechanically check MISSION.md against the mission grammar")
+    p_val.add_argument("--mission", default="MISSION.md", help="Path to MISSION.md")
+
     # score (composite quality gates)
     p_score = sub.add_parser("score", help="Composite quality-gate score + keep/discard verdict")
     p_score.add_argument("--l1", type=float, required=True, help="L1 build+tests 0-10")
@@ -664,6 +720,8 @@ def main():
         status_log(args)
     elif args.command == "score":
         cmd_score(args)
+    elif args.command == "validate":
+        cmd_validate(args)
     else:
         parser.print_help()
 

@@ -216,6 +216,18 @@ fi
 
 echo "Created MISSION.md"
 
+# Grammar check — MISSION.md is a language; this is its linter.
+# Warnings are non-blocking; errors mean the document cannot drive a loop.
+grammar=$(python3 "$HELPER" validate --mission MISSION.md 2>/dev/null || echo '{"valid":true,"errors":[],"warnings":[]}')
+echo "$grammar" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for e in d['errors']:   print('GRAMMAR ERROR:', e)
+for w in d['warnings']: print('grammar note:', w)"
+if ! echo "$grammar" | grep -q '"valid": true'; then
+  echo 'WARNING: MISSION.md failed grammar validation — the loop may not drive correctly. Fix the errors above or edit the file.'
+fi
+
 # ── Field-Specific Verification Contracts ──
 # code (default): the 4-layer pipeline as-is. content/strategy append human
 # & adversarial contracts: the objective is judged by people, or the
